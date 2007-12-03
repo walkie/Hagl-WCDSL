@@ -7,7 +7,7 @@ import Game.Definition
 normal :: (Eq m) => Int -> [m] -> [[v]] -> GameTree m v
 normal np ms vs =
     let turns n = [Turn n (turns n) (zip ms ns) | ns <- chunk (length ms) (nodes (n+1))]
-        nodes n | n > np = [Payoff v End | v <- vs]
+        nodes n | n > np = [Payoff v | v <- vs]
         nodes n | n <= np = map Decision (turns n)
     in head $ nodes 1
 
