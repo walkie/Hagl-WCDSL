@@ -6,43 +6,6 @@ import Game.Definition
 import Game.Execution
 import Game.Execution.Strategy
 
---------------------
--- Game Execution --
---------------------
-
-runGame :: GameDef d m v -> [Player d m v] -> Game d m v a -> IO (ExecState d m v)
-runGame def ps f = execStateT f $ initState def ps
-
-step :: (Show m, Num v) => Game d m v ()
-step = do state <- get
-          es <- events
-          case _location state of
-            (Turn t _ next) -> 
-              do m <- strategy $ _players state !! (t-1)
-                 put state {
-                   _location = next m,
-                   _events = MoveEvent t m : es}
-            (Payoff vs t) -> 
-              put state {
-                _location = t, 
-                _events = PayoffEvent vs : es}
-            End -> do root <- gameTree
-                      summary <- summarize
-                      put state {
-                        _location = root,
-                        _events = [],
-                        _history = ByGame (_events state : asList (_history state)),
-                        _summaries = ByGame (summary : asList (_summaries state)) }
-
-once :: (Show m, Num v) => Game d m v ()
-once = do loc <- location
-          case loc of
-            End -> step
-            _ -> step >> once 
-                       
-times :: (Show m, Num v) => Int -> Game d m v ()
-times 0 = return ()
-times n = once >> times (n-1)
 
 ------------------------
 -- Printing Functions --
@@ -92,19 +55,3 @@ printScore = do s <- liftM2 scoreString players (our score)
                 liftIO $ putStrLn "Score:"
                 liftIO $ putStr s
 
----------------
--- Utilities --
----------------
-
-initState :: GameDef d m v -> [Player d m v] -> ExecState d m v
-initState def ps = ExecState def ps (_gameTree def) [] (ByGame []) (ByGame [])
-
-summarize :: (Show m, Num v) => Game d m v (EventSummary m v)
-summarize = do es <- events
-               np <- numPlayers
-               return $ s es (take np (repeat []),[])
-  where s (MoveEvent i m : es) (mss, vs) =
-            s es ((take (i-1) mss) ++ (m:(mss!!(i-1))) : drop i mss, vs)
-        s (PayoffEvent vs' : es) (mss, vs) =
-            s es (mss, map sum (transpose [vs', vs]))
-        s [] (mss, vs) = (ByPlayer mss, ByPlayer vs)
