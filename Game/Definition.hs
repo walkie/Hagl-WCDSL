@@ -7,51 +7,44 @@ import Data.Tree
 ---------------------
 
 -- Game Tree
-data GameTree d m v = Turn Int d (m -> GameTree d m v)
-                    | Payoff [v] (GameTree d m v)
-                    | End
-
--- Game Definition
-type InfoGroup d m v = [GameTree d m v]
-data GameDef d m v = GameDef {
-    _numPlayers    :: Int,
-    _gameTree      :: (GameTree d m v),
-    _getInfoGroup  :: (d -> InfoGroup d m v),
-    _getAvailMoves :: (d -> [m])
-}
+type InfoGroup m v = [Turn m v]
+data Turn m v = Turn Int (InfoGroup m v) [(m, GameTree m v)] deriving (Eq, Show)
+data GameTree m v = Decision (Turn m v)
+                  | Chance [(Int, GameTree m v)]
+                  | Payoff [v] (GameTree m v)
+                  | End
+                  deriving (Eq)
 
 -- Instance Declarations
-instance (Show v) => Show (GameTree d m v) where
-  show (Turn t _ n) = "Player " ++ show t
-  show (Payoff vs _) = show vs
-  show End = "(End)"
-instance (Show m, Show v) => Show (GameDef d m v) where
-  show (GameDef _ tree _ moves) = showTree moves tree
+instance (Show m, Show v) => Show (GameTree m v) where
+  show t = drawTree $ s "" t
+    where s p (Decision (Turn i _ ts)) = Node (p ++ "Player " ++ show i) [s (show m ++ " -> ") t | (m, t) <- ts]
+          s p (Chance ts) = Node (p ++ "Chance") [s (show c ++ " -> ") t | (c, t) <- ts]
+          s p (Payoff vs End) = Node (p ++ show vs) []
+          s p (Payoff vs t) = Node (p ++ show vs) [s "" t]
+          s p End = Node "End" []
+          cs f ts = [s (f a ++ " -> ") t | (a, t) <- ts]
 
-showTree :: (Show m, Show v) => (d -> [m]) -> GameTree d m v -> String
-showTree moves tree = 
-    let node s (Turn t d next) = Node (s ++ "Player " ++ show t) [node (show m ++ " -> ") (next m) | m <- moves d]
-        node s (Payoff v End) = Node (s ++ show v) []
-        node s (Payoff v t) = Node (s ++ show v) [node " -> " t]
-        node s End = Node (s ++ "(End)") []
-    in drawTree $ node "" tree
+asTree :: GameTree m v -> Tree (GameTree m v)
+asTree t@(Decision (Turn _ _ ts)) = Node t [asTree t' | t' <- snd (unzip ts)]
+asTree t@(Chance ts) = Node t [asTree t' | t' <- snd (unzip ts)]
+asTree t@(Payoff _ t') = Node t [asTree t']
+asTree t = Node t []
 
 ------------------------
 -- GameTree Traversal --
 ------------------------
 
 -- The immediate children of a node.
-children :: GameDef d m v -> GameTree d m v -> [GameTree d m v]
-children _ End = []
-children _ (Payoff _ t) = [t] 
-children g (Turn _ d next) = map next (_getAvailMoves g d)
+children :: GameTree m v -> [GameTree m v]
+children = map rootLabel . subForest . asTree
 
 -- Search nodes in BFS order.
-bfs :: GameDef d m v -> GameTree d m v -> [GameTree d m v]
-bfs g t = let b [] = []
-              b ts = ts ++ b (concatMap (children g) ts)
-          in b [t]
+bfs :: GameTree m v -> [GameTree m v]
+bfs t = let b [] = []
+            b ts = ts ++ b (concatMap children ts)
+        in b [t]
 
 -- Search nodes DFS order.
-dfs :: GameDef d m v -> GameTree d m v -> [GameTree d m v]
-dfs g t = t : concatMap (dfs g) (children g t)
+dfs :: GameTree m v -> [GameTree m v]
+dfs t = t : concatMap dfs (children t)
