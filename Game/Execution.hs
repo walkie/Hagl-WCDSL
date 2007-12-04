@@ -3,6 +3,7 @@ module Game.Execution where
 import Control.Monad.State
 import Data.Maybe
 import Game.Definition
+import Game.Execution.Util
 
 -----------
 -- Types --
@@ -61,7 +62,9 @@ step = get >>= \state ->
         do m <- strategy $ _players state !! (t-1)
            put state { _location = fromJust $ lookup m next,
                        _moves = (t, m) : _moves state }
-      --Chance next -> 
+      Chance dist -> 
+        do t <- randomFromDist dist
+           put state { _location = t }
       Payoff vs ->
         let summary = summarize (_moves state) vs in
           put state { _location = _root state,
@@ -112,7 +115,3 @@ summarize ms vs =
     let np = length vs
         for a = filter (\(b, _) -> a == b) ms
     in (ByPlayer (map (\i -> map snd $ for i) [1..np]), ByPlayer vs)
-
-scoreString :: (Show m, Num v) => [Player m v] -> [v] -> String 
-scoreString ps vs = unlines ["  "++show p++": "++show v | (p,v) <- zip ps vs]
-
