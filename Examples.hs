@@ -14,30 +14,45 @@ pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 -- Some simple players.
 fink = Player "Fink" (pure Defect)
 mum = Player "Mum" (pure Cooperate)
+cd = Player "(CD)*" (periodic [Cooperate, Defect])
+dc = Player "(DC)*" (periodic [Cooperate, Defect])
+ccd = Player "(CCD)*" (periodic [Cooperate, Cooperate, Defect])
 randy = Player "Randy" random
 roulette = Player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
 
 -- The famous Tit-for-Tat.
-titForTat = Player "Tit-for-Tat" strategy
-  where strategy = isFirstGame >>= \isFirst ->
-          if isFirst then return Cooperate 
-          else his $ prev move
+titForTat = Player "Tit-for-Tat" $ 
+    return Cooperate `firstThen` his (prev move)
+
+-- Suspicious Tit-for-Tat (like Tit-for-Tat but defect on first move)
+suspicious = Player "Suspicious Tit-for-Tat" $ 
+    return Defect `firstThen` his (prev move)
+
+-- Tit-for-Tat that only defects after two defects in a row.
+titForTwoTats = Player "Tit-for-Two-Tats" $
+    do ms <- his `each` prevn 2 move
+       return $ if ms == [Defect, Defect] then Defect else Cooperate
 
 -- The Grim Trigger: Cooperates until opponent defects, then defects forever.
-grim = Player "Grim Trigger" strategy
-  where strategy =
-          do ms <- his `each` every move
-             return $ if Defect `elem` ms then Defect else Cooperate
+grim = Player "Grim Trigger" $
+    do ms <- his `each` every move
+       return $ if Defect `elem` ms then Defect else Cooperate
+
+-- If last move resulted in a "big" payoff, do it again, otherwise switch.
+pavlov = Player "Pavlov" $
+    random `firstThen`
+    do p <- my (prev payoff)
+       m <- my (prev move)
+       return $ if p > 1 then m else
+         if m == Cooperate then Defect else Cooperate
 
 -- Made-up strategy: Pick randomly until we have a lead, then
 -- preserve it by repeatedly choosing Defect.
-preserver = Player "Preserver" strategy
-  where strategy = isFirstGame >>= \isFirst ->
-          if isFirst then random
-          else do me <- my score
-                  he <- his score
-                  if me > he then return Defect
-                   else random
+preserver = Player "Preserver" $
+    random `firstThen`
+    do me <- my score
+       he <- his score
+       if me > he then return Defect else random
 
 -- To run (example):
 --runGame pd [randy, titForTat] (times 10 >> printTranscript >> printScores)
@@ -110,3 +125,15 @@ pay [_,_,O,_,O,_,O,_,_] = [0,1]
 pay _ = [0,0]
 
 ticTacToe = stateGame 2 who avail exec pay (take 9 (repeat Empty))
+
+-------------------------
+-- Rock Paper Scissors --
+-------------------------
+
+data RPSMove = Rock | Paper | Scissors deriving (Eq, Show)
+
+p1 = [1,0]
+p2 = [0,1]
+tie = [0,0]
+
+rps = matrix [Rock, Paper, Scissors] [tie, p2, p1, p1, tie, p2, p2, p1, tie]
