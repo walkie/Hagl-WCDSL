@@ -9,7 +9,6 @@ import Game.Definition
 -- Game definition
 data PDMove = Cooperate | Defect deriving (Show, Eq)
 
-pd :: Game PDMove Int
 pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 
 -- Some simple players.
