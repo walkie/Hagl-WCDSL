@@ -1,128 +1,117 @@
-module Game.Execution.Strategy where
+module Game.Strategy where
 
 import Control.Monad.State
 import Data.List
 import Game.Definition
 import Game.Execution
-import System.Random hiding (random)
+import Game.Execution.Util
 
 -----------------------
 -- Common Strategies --
 -----------------------
 
 -- Construct a pure strategy. Always play the same move.
-pure :: m -> Strategy d m v
+pure :: m -> Strategy m v
 pure m = return m
 
--- Pick a move from a list randomly.
-randomFrom :: [m] -> Strategy d m v
-randomFrom dist = do i <- liftIO $ getStdRandom $ randomR (0, length dist - 1)
-                     return $ dist !! i
-
 -- Pick a move from the list of available moves randomly.
-random :: Strategy d m v
-random = do moves <- availMoves
-            randomFrom moves
+random :: Strategy m v
+random = randomFrom =<< liftM availMoves location
 
 -- Construct a mixed strategy. Play moves based on a distribution.
-mixed :: [(Int, m)] -> Strategy d m v
-mixed dist = randomFrom $ concatMap (\(i, m) -> take i (repeat m)) dist
+mixed :: [(Int, m)] -> Strategy m v
+mixed = randomFrom . expandDist
 
 --------------------------
 -- History Manipulation --
 --------------------------
 
-isFirstGame :: Game d m v Bool
-isFirstGame = do ByGame h <- history 
-                 return $ null h
+-- True if this is the first iteration in this execution instance.
+isFirstGame :: GameExec m v Bool
+isFirstGame = liftM (null . asList) history
+
+-- Transcript of each game.
+transcripts :: GameExec m v (ByGame (Transcript m v))
+transcripts = liftM (ByGame . fst . unzip . asList) history
+
+-- Summary of each game.
+summaries :: GameExec m v (ByGame (Summary m v))
+summaries = liftM (ByGame . snd . unzip . asList) history
 
 -- All moves made by each player in each game.
-moves :: (Show m, Num v) => Game d m v (ByGame (ByPlayer [m]))
-moves = do ByGame h <- summaries 
-           return $ ByGame $ fst $ unzip h
+moves :: GameExec m v (ByGame (ByPlayer [m]))
+moves = liftM (ByGame . fst . unzip . asList) summaries
 
 -- The last move by each player in each game.
-move :: (Num v, Show m) => Game d m v (ByGame (ByPlayer m))
-move = do mss <- moves
-          return $ ByGame $ map (ByPlayer . (map head)) $ asList2 mss
+move :: GameExec m v (ByGame (ByPlayer m))
+move = liftM (ByGame . map (ByPlayer . map head) . asList2) moves
 
 -- The total payoff for each player for each game.
-payoff :: (Show m, Num v) => Game d m v (ByGame (ByPlayer v))
-payoff = do ByGame h <- summaries
-            return $ ByGame $ snd $ unzip h
+payoff :: GameExec m v (ByGame (ByPlayer v))
+payoff = liftM (ByGame . snd . unzip . asList) summaries
 
 -- The current score of each player.
-score :: (Show m, Num v) => Game d m v (ByPlayer v)
-score = do ByGame ps <- payoff
-           return $ ByPlayer $ map sum $ transpose $ map asList ps
+score :: (Num v) => GameExec m v (ByPlayer v)
+score = liftM (ByPlayer . map sum . transpose . asList2) payoff
 
 -------------------------
 -- Selection Functions --
 -------------------------
 
 -- Apply selection to each element of a list.
-each :: (Game d m v a -> Game d m v b) -> Game d m v [a] -> Game d m v [b]
-each f xs = do ys <- xs
-               sequence $ map f (map return ys)
+each :: (GameExec m v a -> GameExec m v b) -> GameExec m v [a] -> GameExec m v [b]
+each f xs = (sequence . map f . map return) =<< xs
 
 -- ByPlayer Selection --
 
 -- The index of the current player.
-myIndex :: Game d m v Int
-myIndex = do (Turn p _ _) <- location
+myIndex :: GameExec m v Int
+myIndex = do Decision p _ <- location
              return (p-1)
 
-my :: Game d m v (ByPlayer a) -> Game d m v a
-my x = do ByPlayer as <- x
-          i <- myIndex
-          return $ as !! i
+my :: GameExec m v (ByPlayer a) -> GameExec m v a
+my x = liftM2 (!!) (liftM asList x) myIndex
 
-his :: Game d m v (ByPlayer a) -> Game d m v a
+-- Selects the next player's x.
+his :: GameExec m v (ByPlayer a) -> GameExec m v a
 his x = do ByPlayer as <- x
            i <- myIndex
-           n <- numPlayers
-           return $ as !! ((i+1) `mod` n)
+           g <- game
+           return $ as !! ((i+1) `mod` numPlayers g)
 
-her :: Game d m v (ByPlayer a) -> Game d m v a
+her :: GameExec m v (ByPlayer a) -> GameExec m v a
 her = his
 
-our :: Game d m v (ByPlayer a) -> Game d m v [a]
+our :: GameExec m v (ByPlayer a) -> GameExec m v [a]
 our = liftM asList
 
-their :: Game d m v (ByPlayer a) -> Game d m v [a]
+their :: GameExec m v (ByPlayer a) -> GameExec m v [a]
 their x = do ByPlayer as <- x
              i <- myIndex
              return $ (take i as) ++ (drop (i+1) as)
 
-player :: Int -> Game d m v (ByPlayer a) -> Game d m v a
-player i x = do ByPlayer as <- x
-                return $ as !! i
+playern :: Int -> GameExec m v (ByPlayer a) -> GameExec m v a
+playern i x = do ByPlayer as <- x
+                 return $ as !! i
 
 -- ByGame Selection --
 
-every :: Game d m v (ByGame a) -> Game d m v [a]
+every :: GameExec m v (ByGame a) -> GameExec m v [a]
 every = liftM asList
 
-first :: Game d m v (ByGame a) -> Game d m v a
+first :: GameExec m v (ByGame a) -> GameExec m v a
 first = liftM (last . asList)
 
-firstn :: Int -> Game d m v (ByGame a) -> Game d m v [a]
+firstn :: Int -> GameExec m v (ByGame a) -> GameExec m v [a]
 firstn n = liftM (reverse . take n . reverse . asList)
 
-prev :: Game d m v (ByGame a) -> Game d m v a
+prev :: GameExec m v (ByGame a) -> GameExec m v a
 prev = liftM (head . asList)
 
-prevn :: Int -> Game d m v (ByGame a) -> Game d m v [a]
+prevn :: Int -> GameExec m v (ByGame a) -> GameExec m v [a]
 prevn n = liftM (take n . asList)
 
-game :: Int -> Game d m v (ByGame a) -> Game d m v a
-game i x = do ByGame as <- x
-              n <- numGames
-              return $ as !! (n-i)
-
------------------------
--- Utility Functions --
------------------------
-
-asList2 :: (DList f, DList g) => f (g a) -> [[a]]
-asList2 ll = map asList $ asList ll
+gamen :: Int -> GameExec m v (ByGame a) -> GameExec m v a
+gamen i x = do ByGame as <- x
+               n <- numGames
+               return $ as !! (n-i)

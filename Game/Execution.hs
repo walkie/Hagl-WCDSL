@@ -1,9 +1,7 @@
 module Game.Execution where
 
 import Control.Monad.State
-import Data.Maybe
 import Game.Definition
-import Game.Execution.Util
 
 -----------
 -- Types --
@@ -14,16 +12,22 @@ type GameExec m v a = StateT (ExecState m v) IO a
 
 -- Game Execution State
 data ExecState m v = ExecState {
-    _root     :: (Game m v),   -- game definition
-    _players  :: [Player m v], -- players active in game
-    _location :: (Game m v),   -- current node in game tree
-    _moves    :: [(Int, m)],   -- moves so far this game (newest at head)
-    _history  :: (History m v) -- a summary of each game
+    _game       :: (Game m v),       -- game definition
+    _players    :: [Player m v],     -- players active in game
+    _location   :: (GameTree m v),   -- current node in game tree
+    _transcript :: (Transcript m v), -- events so far this game (newest at head)
+    _history    :: (History m v)     -- a summary of each game
 }
 
 -- History
-type History m v = ByGame (Summary m v)
+type History m v = ByGame (Transcript m v, Summary m v)
+type Transcript m v = [Event m v]
 type Summary m v = (ByPlayer [m], ByPlayer v)
+
+data Event m v = DecisionEvent Int m
+               | ChanceEvent Int
+               | PayoffEvent [v]
+               deriving (Eq, Show)
 
 data ByGame a = ByGame [a] deriving (Eq, Show)
 data ByPlayer a = ByPlayer [a] deriving (Eq, Show)
@@ -34,6 +38,9 @@ instance DList ByGame where
     asList (ByGame as) = as
 instance DList ByPlayer where
     asList (ByPlayer as) = as
+
+asList2 :: (DList f, DList g) => f (g a) -> [[a]]
+asList2 = map asList . asList
 
 -- Player/Strategy
 type Name = String
@@ -46,72 +53,28 @@ data Player m v = Player {
 instance Show (Player m v) where
     show = playerName
 instance Eq (Player m v) where
-    (Player n1 _) == (Player n2 _) = n1 == n2
-
---------------------
--- Game Execution --
---------------------
-
-runGame :: Game m v -> [Player m v] -> GameExec m v a -> IO (ExecState m v)
-runGame root ps f = execStateT f $ initState root ps
-
-step :: (Eq m) => GameExec m v ()
-step = get >>= \state ->
-    let t = _location state in case t of
-      Decision (Turn t _ next) ->
-        do m <- strategy $ _players state !! (t-1)
-           put state { _location = fromJust $ lookup m next,
-                       _moves = (t, m) : _moves state }
-      Chance dist -> 
-        do t <- randomFromDist dist
-           put state { _location = t }
-      Payoff vs ->
-        let summary = summarize (_moves state) vs in
-          put state { _location = _root state,
-                      _moves = [],
-                      _history = ByGame (summary : asList (_history state)) }
-
-once :: (Eq m) => GameExec m v ()
-once = do loc <- location
-          case loc of
-            Payoff _ -> step
-            _ -> step >> once 
-                       
-times :: (Eq m) => Int -> GameExec m v ()
-times 0 = return ()
-times n = once >> times (n-1)
+    a == b = playerName a == playerName b
+instance Ord (Player m v) where
+    compare a b = compare (playerName a) (playerName b)
 
 -------------------------------
 -- Execution State Shortcuts --
 -------------------------------
 
-root :: GameExec m v (Game m v)
-root = liftM _root get
+game :: GameExec m v (Game m v)
+game = liftM _game get
 
 players :: GameExec m v [Player m v]
 players = liftM _players get
 
-location :: GameExec m v (Game m v)
+location :: GameExec m v (GameTree m v)
 location = liftM _location get
 
-moves :: GameExec m v [(Int, m)]
-moves = liftM _moves get
+transcript :: GameExec m v (Transcript m v)
+transcript = liftM _transcript get
 
 history :: GameExec m v (History m v)
 history = liftM _history get
 
 numGames :: GameExec m v Int
 numGames = liftM (length . asList) history
-
----------------
--- Utilities --
----------------
-
-initState :: Game m v -> [Player m v] -> ExecState m v
-initState root ps = ExecState root ps root [] (ByGame [])
-
-summarize :: [(Int, m)] -> [v] -> Summary m v
-summarize ms vs =
-    let np = length vs
-        for a = filter (\(b, _) -> a == b) ms
-    in (ByPlayer (map (\i -> map snd $ for i) [1..np]), ByPlayer vs)

@@ -1,34 +1,35 @@
 module Game (
   -- Game.Definition
-  GameTree(..), InfoGroup, GameDef(..), children, bfs, dfs,
-  -- Game.Definition.Extensive
-  Extensive(..), (<|>), (<+>), extensive,
-  -- Game.Definition.Normal
-  normal, matrix, zerosum,
+  Game(..), GameTree(..), 
+  normal, matrix, zerosum, extensive, stateGame,
+  decision, chance, (<+>), (<|>),
+  availMoves, asTree,
+  children, bfs, dfs,
   -- Game.Execution
-  Game, ExecState(..), ByGame(..), ByPlayer(..), asList,
-  Event, EventHistory, EventSummary, EventSummaries,
+  GameExec, ExecState(..), 
+  History, Transcript, Summary, Event,
+  ByGame(..), ByPlayer(..), asList, asList2,
   Name, Strategy, Player(..),
-  gameDef, players, location, events, history, summaries, 
-  numGames, locationData, availMoves, infoGroup,
-  numPlayers, gameTree, getInfoGroup, getAvailMoves,
+  game, players, location, transcript, history, numGames,
   -- Game.Execution.Run
   runGame, step, once, times,
+  -- Game.Execution.Print
   printLocation, printTranscript, printTranscriptOfGame,
   printSummaries, printSummaryOfGame, printScore,
-  -- Game.Execution.Strategy
-  pure, randomFrom, random, mixed,
-  isFirstGame, moves, move, payoff, score,
-  myIndex, each, my, his, her, our, their, player,
-  every, first, firstn, prev, prevn, game,
   -- Game.Execution.Tournament
-  roundRobin
+  runGames, tournament, tournament2, tournament3, tournament4,
+  roundRobin, roundRobin3, roundRobin4,
+  fullRoundRobin, fullRoundRobin3, fullRoundRobin4,
+  -- Game.Strategy
+  pure, random, mixed,
+  isFirstGame, transcripts, summaries, moves, move, payoff, score,
+  each, myIndex, my, his, her, our, their, playern,
+  every, first, firstn, prev, prevn, gamen
 ) where
 
 import Game.Definition
-import Game.Definition.Extensive
-import Game.Definition.Normal
 import Game.Execution
 import Game.Execution.Run
-import Game.Execution.Strategy
+import Game.Execution.Print
 import Game.Execution.Tournament
+import Game.Strategy

@@ -1,6 +1,6 @@
-import Control.Monad
 import Data.List
 import Game
+import Game.Definition
 
 ------------------------
 -- Prisoner's Dilemma --
@@ -9,7 +9,7 @@ import Game
 -- Game definition
 data PDMove = Cooperate | Defect deriving (Show, Eq)
 
-pd :: GameDef Int PDMove Int
+pd :: Game PDMove Int
 pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 
 -- Some simple players.
@@ -19,14 +19,12 @@ randy = Player "Randy" random
 roulette = Player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
 
 -- The famous Tit-for-Tat.
-titForTat :: Player Int PDMove Int
 titForTat = Player "Tit-for-Tat" strategy
   where strategy = isFirstGame >>= \isFirst ->
           if isFirst then return Cooperate 
           else his $ prev move
 
 -- The Grim Trigger: Cooperates until opponent defects, then defects forever.
-grim :: Player Int PDMove Int
 grim = Player "Grim Trigger" strategy
   where strategy =
           do ms <- his `each` every move
@@ -34,7 +32,6 @@ grim = Player "Grim Trigger" strategy
 
 -- Made-up strategy: Pick randomly until we have a lead, then
 -- preserve it by repeatedly choosing Defect.
-preserver :: Player Int PDMove Int
 preserver = Player "Preserver" strategy
   where strategy = isFirstGame >>= \isFirst ->
           if isFirst then random
@@ -49,14 +46,14 @@ preserver = Player "Preserver" strategy
 --------------------------
 -- Cuban Missile Crisis --
 --------------------------
-ussr m = Tn 1 [m]
-usa  m = Tn 2 [m]
+ussr = decision 1
+usa  = decision 2
 
-nuclearWar    = Pay [-100,-100]
-nukesInCuba   = Pay [   1,  -1]
-nukesInTurkey = Pay [  -1,   1]
-usaLooksGood  = Pay [   0,   1]
-ussrLooksGood = Pay [   1,   0]
+nuclearWar    = Payoff [-100,-100] :: GameTree String Int
+nukesInCuba   = Payoff [   1,  -1] :: GameTree String Int
+nukesInTurkey = Payoff [  -1,   1] :: GameTree String Int
+usaLooksGood  = Payoff [   0,   1] :: GameTree String Int
+ussrLooksGood = Payoff [   1,   0] :: GameTree String Int
 
 start = ussr ("Send Missiles to Cuba", usaResponse) 
          <|> ("Do Nothing", nukesInTurkey)
@@ -73,17 +70,44 @@ ussrInvasionCounter = ussr ("Pull Out", nukesInTurkey <+> usaLooksGood)
 
 crisis = extensive start
 
---------------------
--- Extensive Form --
---------------------
+-----------------
+-- Tic Tac Toe --
+-----------------
 
--- An example of defining an extensive form game with arbitrary imperfect info
-data ABC = A | B | C deriving (Eq, Show)
-abc t _ _ A = t
-abc _ t _ B = t
-abc _ _ t C = t
-t1 = Turn 1 0 $ abc t2a t2b t2c
-t2a = Turn 2 1 $ abc (Payoff [0,0] End) (Payoff [2,1] End) (Payoff [1,3] End)
-t2b = Turn 2 2 $ abc (Payoff [1,2] End) (Payoff [3,1] End) (Payoff [0,0] End)
-t2c = Turn 2 1 $ abc (Payoff [3,0] End) (Payoff [1,2] End) (Payoff [0,3] End)
-g = GameDef 2 t1 ([[t1],[t2a,t2c],[t2b]] !!) (\_ -> [A,B,C])
+data Square = X | O | Empty deriving (Eq, Show)
+type Board = [Square]
+type Move = (Int, Square)
+
+empty :: Board -> [Int]
+empty = elemIndices Empty
+
+who :: Board -> Int
+who b = ((length (empty b) + 1) `mod` 2) + 1
+
+avail :: Board -> [Move]
+avail b = if pay b /= [0,0] then []
+          else zip (empty b) (repeat ([X,O] !! (who b - 1)))
+
+exec :: Board -> Move -> Board
+exec b (i, m) = take i b ++ m : drop (i+1) b
+
+pay :: Board -> [Int]
+pay [X,X,X,_,_,_,_,_,_] = [1,0]
+pay [_,_,_,X,X,X,_,_,_] = [1,0]
+pay [_,_,_,_,_,_,X,X,X] = [1,0]
+pay [X,_,_,X,_,_,X,_,_] = [1,0]
+pay [_,X,_,_,X,_,_,X,_] = [1,0]
+pay [_,_,X,_,_,X,_,_,X] = [1,0]
+pay [X,_,_,_,X,_,_,_,X] = [1,0]
+pay [_,_,X,_,X,_,X,_,_] = [1,0]
+pay [O,O,O,_,_,_,_,_,_] = [0,1]
+pay [_,_,_,O,O,O,_,_,_] = [0,1]
+pay [_,_,_,_,_,_,O,O,O] = [0,1]
+pay [O,_,_,O,_,_,O,_,_] = [0,1]
+pay [_,O,_,_,O,_,_,O,_] = [0,1]
+pay [_,_,O,_,_,O,_,_,O] = [0,1]
+pay [O,_,_,_,O,_,_,_,O] = [0,1]
+pay [_,_,O,_,O,_,O,_,_] = [0,1]
+pay _ = [0,0]
+
+ticTacToe = stateGame 2 who avail exec pay (take 9 (repeat Empty))
