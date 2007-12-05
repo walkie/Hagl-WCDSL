@@ -17,9 +17,7 @@ module Game (
   printLocation, printTranscript, printTranscriptOfGame,
   printSummaries, printSummaryOfGame, printScore,
   -- Game.Execution.Tournament
-  runGames, tournament, tournament2, tournament3, tournament4,
-  roundRobin, roundRobin3, roundRobin4,
-  fullRoundRobin, fullRoundRobin3, fullRoundRobin4,
+  runGames, tournament, fullRoundRobin, roundRobin,
   -- Game.Strategy
   pure, random, mixed,
   isFirstGame, transcripts, summaries, moves, move, payoff, score,
