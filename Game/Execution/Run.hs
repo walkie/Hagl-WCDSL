@@ -11,7 +11,7 @@ import Game.Execution.Util
 --------------------
 
 runGame :: Game m v -> [Player m v] -> GameExec m v a -> IO (ExecState m v)
-runGame root ps f = execStateT f $ initState root ps
+runGame g ps f = execStateT f $ initState g ps
 
 step :: (Eq m, Num v) => GameExec m v ()
 step = get >>= \state ->

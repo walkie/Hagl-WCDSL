@@ -1,6 +1,5 @@
 import Data.List
 import Game
-import Game.Definition
 
 ------------------------
 -- Prisoner's Dilemma --
@@ -54,8 +53,9 @@ preserver = Player "Preserver" $
        he <- his score
        if me > he then return Defect else random
 
--- To run (example):
---runGame pd [randy, titForTat] (times 10 >> printTranscript >> printScores)
+-- Running from GHCi:
+-- > runGame pd [titForTat, pavlov] (times 10 >> printTranscript >> printScores)
+-- > roundRobin pd [titForTat, titForTwoTats, grim, suspicious, pavlov] (times 100 >> printScore)
 
 --------------------------
 -- Cuban Missile Crisis --
@@ -132,8 +132,8 @@ ticTacToe = stateGame 2 who avail exec pay (take 9 (repeat Empty))
 
 data RPSMove = Rock | Paper | Scissors deriving (Eq, Show)
 
-p1 = [1,0]
-p2 = [0,1]
-tie = [0,0]
+rps = zerosum [Rock,Paper,Scissors] [0,-1, 1,
+                                     1, 0,-1,
+                                    -1, 1, 0]
 
-rps = matrix [Rock, Paper, Scissors] [tie, p2, p1, p1, tie, p2, p2, p1, tie]
+-- TODO RPS players...
