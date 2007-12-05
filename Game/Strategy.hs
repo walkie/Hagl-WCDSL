@@ -24,7 +24,7 @@ mixed = randomFrom . expandDist
 
 -- Perform some pattern of moves periodically.
 periodic :: [m] -> Strategy m v
-periodic ms = numGames >>= \n -> return $ ms !! mod (n-1) (length ms)
+periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
 
 -- Perform some strategy on the first move, then another strategy thereafter.
 firstThen :: Strategy m v -> Strategy m v -> Strategy m v
