@@ -79,7 +79,9 @@ frequency = Player "Huckleberry" $
            p = length $ filter (Paper ==) ms
            s = length $ filter (Scissors ==) ms
            x = maximum [r,p,s]
-        in return $ if x == r then Paper else if x == p then Scissors else Rock
+        in return $ if x == r then Paper else 
+                    if x == p then Scissors
+                              else Rock
 
 --------------------------
 -- Cuban Missile Crisis --

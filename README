@@ -43,7 +43,7 @@ examples:
 
 >> runGame pd [titForTat, pavlov] (step >> printLocation)
 
-This process the first node (Player 1's Decision), and then print the current
+This processes the first node (Player 1's Decision), and then print the current
 location: Player 2's Decision node.
 
 >> runGame pd [titForTat, suspicious] (times 4 >> printTranscript >> printScore)

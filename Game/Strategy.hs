@@ -12,7 +12,7 @@ import Game.Execution.Util
 
 -- Construct a pure strategy. Always play the same move.
 pure :: m -> Strategy m v
-pure m = return m
+pure = return
 
 -- Pick a move from the list of available moves randomly.
 random :: Strategy m v
