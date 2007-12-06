@@ -13,18 +13,12 @@ For example:
 Should print:
 
 Player 1
-|
 +- Cooperate -> Player 2
-|  |
 |  +- Cooperate -> [2,2]
-|  |
 |  `- Defect -> [0,3]
-|
 `- Defect -> Player 2
-   |
-      +- Cooperate -> [3,0]
-         |
-            `- Defect -> [1,1]
+   +- Cooperate -> [3,0]
+   `- Defect -> [1,1]
 
 The function runGame is used to execute a game.  It takes a game, a set of
 players to play the game, and some functions to execute within the 
@@ -76,4 +70,3 @@ An example tournament:
 For each pair of players from the list, this will run the iterated prisoner's
 dilemma 100 times, and print the score of that instance.  At the end, the
 total scores of all players involved will be printed in sorted order.
-
