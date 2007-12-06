@@ -24,10 +24,12 @@ data GameTree m v = Decision Int [(m, GameTree m v)]
 
 -- Instance Declarations
 instance (Show m, Show v) => Show (GameTree m v) where
-  show t = drawTree $ s "" t
+  show t = condense $ drawTree $ s "" t
     where s p (Decision i ts) = Node (p ++ "Player " ++ show i) [s (show m ++ " -> ") t | (m, t) <- ts]
           s p (Chance ts) = Node (p ++ "Chance") [s (show c ++ " -> ") t | (c, t) <- ts]
           s p (Payoff vs) = Node (p ++ show vs) []
+          condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
+                       in unlines $ filter empty $ lines s
 instance (Show m, Show v) => Show (Game m v) where
   show g = show (tree g)
 
@@ -36,7 +38,7 @@ instance (Show m, Show v) => Show (Game m v) where
 ----------------------------
 
 -- Construct a game from a Normal-Form definition
-normal :: (Eq m) => Int -> [m] -> [[v]] -> Game m v
+normal :: Int -> [m] -> [[v]] -> Game m v
 normal np ms vs =
     let nodes n = if n > np 
           then [Payoff v | v <- vs]
@@ -46,11 +48,11 @@ normal np ms vs =
     in Game np (head $ nodes 1) group
 
 -- Construct a two-player Normal-Form game.
-matrix :: (Eq m) => [m] -> [[v]] -> Game m v
+matrix :: [m] -> [[v]] -> Game m v
 matrix = normal 2
 
 -- Construct a two-player Zero-Sum game.
-zerosum :: (Eq m, Num v) => [m] -> [v] -> Game m v
+zerosum :: (Num v) => [m] -> [v] -> Game m v
 zerosum ms vs = normal 2 ms (map (\v -> [v, -v]) vs)
 
 -------------------------------
