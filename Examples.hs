@@ -57,6 +57,30 @@ preserver = Player "Preserver" $
 -- > runGame pd [titForTat, pavlov] (times 10 >> printTranscript >> printScores)
 -- > roundRobin pd [titForTat, titForTwoTats, grim, suspicious, pavlov] (times 100 >> printScore)
 
+-------------------------
+-- Rock Paper Scissors --
+-------------------------
+
+data RPSMove = Rock | Paper | Scissors deriving (Eq, Show)
+
+rps = zerosum [Rock,Paper,Scissors] [0,-1, 1,
+                                     1, 0,-1,
+                                    -1, 1, 0]
+
+-- Some simple players
+rocky = Player "Stalone" $ pure Rock
+rotate = Player "RPS" $ periodic [Rock, Paper, Scissors]
+-- can reuse randy from above!
+
+-- Play the move that will beat the move the opponent has played most.
+frequency = Player "Huckleberry" $
+    do ms <- his `each` every move
+       let r = length $ filter (Rock ==) ms
+           p = length $ filter (Paper ==) ms
+           s = length $ filter (Scissors ==) ms
+           x = maximum [r,p,s]
+        in return $ if x == r then Paper else if x == p then Scissors else Rock
+
 --------------------------
 -- Cuban Missile Crisis --
 --------------------------
@@ -125,15 +149,3 @@ pay [_,_,O,_,O,_,O,_,_] = [0,1]
 pay _ = [0,0]
 
 ticTacToe = stateGame 2 who avail exec pay (take 9 (repeat Empty))
-
--------------------------
--- Rock Paper Scissors --
--------------------------
-
-data RPSMove = Rock | Paper | Scissors deriving (Eq, Show)
-
-rps = zerosum [Rock,Paper,Scissors] [0,-1, 1,
-                                     1, 0,-1,
-                                    -1, 1, 0]
-
--- TODO RPS players...

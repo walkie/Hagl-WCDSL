@@ -18,6 +18,10 @@ pure m = return m
 random :: Strategy m v
 random = randomFrom =<< liftM availMoves location
 
+-- Pick a move randomly from a list.
+randomFrom :: [m] -> Strategy m v
+randomFrom as = liftM (as !!) (randomIndex as)
+
 -- Construct a mixed strategy. Play moves based on a distribution.
 mixed :: [(Int, m)] -> Strategy m v
 mixed = randomFrom . expandDist

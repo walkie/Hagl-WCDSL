@@ -19,7 +19,7 @@ module Game (
   -- Game.Execution.Tournament
   runGames, tournament, fullRoundRobin, roundRobin,
   -- Game.Strategy
-  pure, random, mixed, periodic, firstThen,
+  pure, random, randomFrom, mixed, periodic, firstThen,
   isFirstGame, transcripts, summaries, moves, move, payoff, score,
   each, myIndex, my, his, her, our, their, playern,
   every, first, firstn, prev, prevn, gamen
