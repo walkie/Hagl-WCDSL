@@ -33,6 +33,10 @@ instance (Show m, Show v) => Show (GameTree m v) where
 instance (Show m, Show v) => Show (Game m v) where
   show g = show (tree g)
 
+-- An infoGroup function for trees with perfect information.
+perfect :: GameTree m v -> [GameTree m v]
+perfect t = [t]
+
 ----------------------------
 -- Normal Form Definition --
 ----------------------------
@@ -64,7 +68,7 @@ extensive :: GameTree m v -> Game m v
 extensive t = let p (Decision i _) = i
                   p _ = 0
                   np = foldl1 max $ map p (bfs t)
-              in Game np t (\a -> [a])
+              in Game np t perfect
 
 -----------------------------
 -- State-Driven Definition --
@@ -83,7 +87,7 @@ stateGame np who moves exec pay init =
         tree d = if end d 
           then Payoff (pay d)
           else Decision (who d) $ zip (moves d) $ map (tree . exec d) (moves d)
-    in Game np (tree init) (\t -> [t])
+    in Game np (tree init) perfect
 
 ----------------------------
 -- Game Tree Construction --
@@ -104,6 +108,7 @@ Chance as <+> Chance bs = Chance (as ++ bs)
 Decision a as <+> Decision b bs | a == b = Decision a (as ++ bs)
 
 -- Add a branch to a game tree.
+-- TODO this doesn't work very well...  Maybe restrict to just adding Decision branches...
 class Branch t b where
     (<|>) :: t -> b -> t
 instance Branch (GameTree m v) (m, GameTree m v) where

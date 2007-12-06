@@ -1,6 +1,6 @@
 module Game (
   -- Game.Definition
-  Game(..), GameTree(..), 
+  Game(..), GameTree(..), perfect,
   normal, matrix, zerosum, extensive, stateGame,
   decision, chance, (<+>), (<|>),
   availMoves, asTree,

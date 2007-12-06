@@ -86,6 +86,7 @@ frequency = Player "Huckleberry" $
 --------------------------
 -- Cuban Missile Crisis --
 --------------------------
+
 ussr = decision 1
 usa  = decision 2
 
@@ -110,6 +111,13 @@ ussrInvasionCounter = ussr ("Pull Out", nukesInTurkey <+> usaLooksGood)
 
 crisis = extensive start
 
+------------------
+-- Dice Rolling --
+------------------
+
+die = Game 1 (Chance (zip (repeat 1) (map (\a -> Payoff [a]) [1..6]))) perfect
+roll n = runGame die [Player "Total" $ return ()] (times n >> printScore)
+
 -----------------
 -- Tic Tac Toe --
 -----------------
@@ -122,7 +130,8 @@ empty :: Board -> [Int]
 empty = elemIndices Empty
 
 who :: Board -> Int
-who b = ((length (empty b) + 1) `mod` 2) + 1
+who b | odd (length (empty b)) = 1
+      | otherwise = 2
 
 avail :: Board -> [Move]
 avail b = if pay b /= [0,0] then []
