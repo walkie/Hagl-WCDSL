@@ -8,25 +8,25 @@ import Game.Definition
 -----------
 
 -- Game Execution Monad
-type GameExec m v a = StateT (ExecState m v) IO a
+type GameExec m a = StateT (ExecState m) IO a
 
 -- Game Execution State
-data ExecState m v = ExecState {
-    _game       :: (Game m v),       -- game definition
-    _players    :: [Player m v],     -- players active in game
-    _location   :: (GameTree m v),   -- current node in game tree
-    _transcript :: (Transcript m v), -- events so far this game (newest at head)
-    _history    :: (History m v)     -- a summary of each game
+data ExecState m = ExecState {
+    _game       :: (Game m),       -- game definition
+    _players    :: [Player m],     -- players active in game
+    _location   :: (GameTree m),   -- current node in game tree
+    _transcript :: (Transcript m), -- events so far this game (newest at head)
+    _history    :: (History m)     -- a summary of each game
 }
 
 -- History
-type History m v = ByGame (Transcript m v, Summary m v)
-type Transcript m v = [Event m v]
-type Summary m v = (ByPlayer [m], ByPlayer v)
+type History m = ByGame (Transcript m, Summary m)
+type Transcript m = [Event m]
+type Summary m = (ByPlayer [m], ByPlayer Float)
 
-data Event m v = DecisionEvent Int m
+data Event m = DecisionEvent Int m
                | ChanceEvent Int
-               | PayoffEvent [v]
+               | PayoffEvent [Float]
                deriving (Eq, Show)
 
 data ByGame a = ByGame [a] deriving (Eq, Show)
@@ -44,37 +44,37 @@ asList2 = map asList . asList
 
 -- Player/Strategy
 type Name = String
-type Strategy m v = GameExec m v m
+type Strategy m = GameExec m m
 
-data Player m v = Player {
+data Player m = Player {
     playerName :: Name,
-    strategy   :: (Strategy m v)
+    strategy   :: (Strategy m)
 }
-instance Show (Player m v) where
+instance Show (Player m) where
     show = playerName
-instance Eq (Player m v) where
+instance Eq (Player m) where
     a == b = playerName a == playerName b
-instance Ord (Player m v) where
+instance Ord (Player m) where
     compare a b = compare (playerName a) (playerName b)
 
 -------------------------------
 -- Execution State Shortcuts --
 -------------------------------
 
-game :: GameExec m v (Game m v)
+game :: GameExec m (Game m)
 game = liftM _game get
 
-players :: GameExec m v [Player m v]
+players :: GameExec m [Player m]
 players = liftM _players get
 
-location :: GameExec m v (GameTree m v)
+location :: GameExec m (GameTree m)
 location = liftM _location get
 
-transcript :: GameExec m v (Transcript m v)
+transcript :: GameExec m (Transcript m)
 transcript = liftM _transcript get
 
-history :: GameExec m v (History m v)
+history :: GameExec m (History m)
 history = liftM _history get
 
-numGames :: GameExec m v Int
+numGames :: GameExec m Int
 numGames = liftM (length . asList) history

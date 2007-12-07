@@ -10,31 +10,31 @@ import Data.Tree
 ---------------------
 
 -- Game Definition
-data Game m v = Game {
+data Game m = Game {
     numPlayers :: Int,
-    tree       :: GameTree m v,
-    infoGroup  :: GameTree m v -> [GameTree m v]
+    tree       :: GameTree m,
+    infoGroup  :: GameTree m -> [GameTree m] 
 }
 
 -- Game Tree
-data GameTree m v = Decision Int [(m, GameTree m v)]
-                  | Chance [(Int, GameTree m v)]
-                  | Payoff [v]
-                  deriving (Eq)
+data GameTree m = Decision Int [(m, GameTree m)]
+                | Chance [(Int, GameTree m)]
+                | Payoff [Float]
+                deriving (Eq)
 
 -- Instance Declarations
-instance (Show m, Show v) => Show (GameTree m v) where
+instance (Show m) => Show (GameTree m) where
   show t = condense $ drawTree $ s "" t
     where s p (Decision i ts) = Node (p ++ "Player " ++ show i) [s (show m ++ " -> ") t | (m, t) <- ts]
           s p (Chance ts) = Node (p ++ "Chance") [s (show c ++ " -> ") t | (c, t) <- ts]
           s p (Payoff vs) = Node (p ++ show vs) []
           condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
                        in unlines $ filter empty $ lines s
-instance (Show m, Show v) => Show (Game m v) where
+instance (Show m) => Show (Game m) where
   show g = show (tree g)
 
 -- An infoGroup function for trees with perfect information.
-perfect :: GameTree m v -> [GameTree m v]
+perfect :: GameTree m -> [GameTree m]
 perfect t = [t]
 
 ----------------------------
@@ -42,7 +42,7 @@ perfect t = [t]
 ----------------------------
 
 -- Construct a game from a Normal-Form definition
-normal :: Int -> [m] -> [[v]] -> Game m v
+normal :: Int -> [m] -> [[Float]] -> Game m
 normal np ms vs =
     let nodes n = if n > np 
           then [Payoff v | v <- vs]
@@ -52,11 +52,11 @@ normal np ms vs =
     in Game np (head $ nodes 1) group
 
 -- Construct a two-player Normal-Form game.
-matrix :: [m] -> [[v]] -> Game m v
+matrix :: [m] -> [[Float]] -> Game m
 matrix = normal 2
 
 -- Construct a two-player Zero-Sum game.
-zerosum :: (Num v) => [m] -> [v] -> Game m v
+zerosum :: [m] -> [Float] -> Game m
 zerosum ms vs = normal 2 ms (map (\v -> [v, -v]) vs)
 
 -------------------------------
@@ -64,7 +64,7 @@ zerosum ms vs = normal 2 ms (map (\v -> [v, -v]) vs)
 -------------------------------
 
 -- Build a game from a tree.
-extensive :: GameTree m v -> Game m v
+extensive :: GameTree m -> Game m
 extensive t = let p (Decision i _) = i
                   p _ = 0
                   np = foldl1 max $ map p (bfs t)
@@ -81,7 +81,7 @@ extensive t = let p (Decision i _) = i
      * Execute a move and return the new state.
      * What is the payoff for this state? Undefined if there are available moves.
      * Initial state. -}
-stateGame :: Int -> (d -> Int) -> (d -> [m]) -> (d -> m -> d) -> (d -> [v]) -> d -> Game m v
+stateGame :: Int -> (d -> Int) -> (d -> [m]) -> (d -> m -> d) -> (d -> [Float]) -> d -> Game m
 stateGame np who moves exec pay init = 
     let end = null . moves
         tree d = if end d 
@@ -94,15 +94,15 @@ stateGame np who moves exec pay init =
 ----------------------------
 
 -- Construct a decision node with only one option.
-decision :: Int -> (m, GameTree m v) -> GameTree m v
+decision :: Int -> (m, GameTree m) -> GameTree m
 decision i m = Decision i [m]
 
 -- Construct a chance node with only one option.
-chance :: (Int, GameTree m v) -> GameTree m v
+chance :: (Int, GameTree m) -> GameTree m
 chance c = Chance [c]
 
 -- Combines two game trees.
-(<+>) :: (Eq m, Num v) => GameTree m v -> GameTree m v -> GameTree m v
+(<+>) :: (Eq m) => GameTree m -> GameTree m -> GameTree m
 Payoff as <+> Payoff bs = Payoff [a + b | (a,b) <- zip as bs]
 Chance as <+> Chance bs = Chance (as ++ bs)
 Decision a as <+> Decision b bs | a == b = Decision a (as ++ bs)
@@ -111,9 +111,9 @@ Decision a as <+> Decision b bs | a == b = Decision a (as ++ bs)
 -- TODO this doesn't work very well...  Maybe restrict to just adding Decision branches...
 class Branch t b where
     (<|>) :: t -> b -> t
-instance Branch (GameTree m v) (m, GameTree m v) where
+instance Branch (GameTree m) (m, GameTree m) where
     Decision i ms <|> m = Decision i (m:ms)
-instance Branch (GameTree m v) (Int, GameTree m v) where
+instance Branch (GameTree m) (Int, GameTree m) where
     Chance cs <|> c = Chance (c:cs)
 
 -------------------------
@@ -121,28 +121,28 @@ instance Branch (GameTree m v) (Int, GameTree m v) where
 -------------------------
 
 -- Return the moves that are available from this node.
-availMoves :: (GameTree m v) -> [m]
+availMoves :: (GameTree m) -> [m]
 availMoves (Decision _ ms) = map fst ms
 availMoves _ = []
 
 -- Get the game tree as a Data.Tree structure.
-asTree :: GameTree m v -> Tree (GameTree m v)
+asTree :: GameTree m -> Tree (GameTree m)
 asTree t@(Decision _ ts) = Node t [asTree t' | t' <- snd (unzip ts)]
 asTree t@(Chance ts) = Node t [asTree t' | t' <- snd (unzip ts)]
 asTree t@(Payoff _) = Node t []
 
 -- The immediate children of a node.
-children :: GameTree m v -> [GameTree m v]
+children :: GameTree m -> [GameTree m]
 children = map rootLabel . subForest . asTree
 
 -- Search nodes in BFS order.
-bfs :: GameTree m v -> [GameTree m v]
+bfs :: GameTree m -> [GameTree m]
 bfs t = let b [] = []
             b ts = ts ++ b (concatMap children ts)
         in b [t]
 
 -- Search nodes DFS order.
-dfs :: GameTree m v -> [GameTree m v]
+dfs :: GameTree m -> [GameTree m]
 dfs t = t : concatMap dfs (children t)
 
 ---------------

@@ -90,11 +90,11 @@ frequency = Player "Huckleberry" $
 ussr = decision 1
 usa  = decision 2
 
-nuclearWar    = Payoff [-100,-100] :: GameTree String Int
-nukesInCuba   = Payoff [   1,  -1] :: GameTree String Int
-nukesInTurkey = Payoff [  -1,   1] :: GameTree String Int
-usaLooksGood  = Payoff [   0,   1] :: GameTree String Int
-ussrLooksGood = Payoff [   1,   0] :: GameTree String Int
+nuclearWar    = Payoff [-100,-100] :: GameTree String
+nukesInCuba   = Payoff [   1,  -1] :: GameTree String
+nukesInTurkey = Payoff [  -1,   1] :: GameTree String
+usaLooksGood  = Payoff [   0,   1] :: GameTree String
+ussrLooksGood = Payoff [   1,   0] :: GameTree String
 
 start = ussr ("Send Missiles to Cuba", usaResponse) 
          <|> ("Do Nothing", nukesInTurkey)
@@ -140,7 +140,7 @@ avail b = if pay b /= [0,0] then []
 exec :: Board -> Move -> Board
 exec b (i, m) = take i b ++ m : drop (i+1) b
 
-pay :: Board -> [Int]
+pay :: Board -> [Float]
 pay [X,X,X,_,_,_,_,_,_] = [1,0]
 pay [_,_,_,X,X,X,_,_,_] = [1,0]
 pay [_,_,_,_,_,_,X,X,X] = [1,0]

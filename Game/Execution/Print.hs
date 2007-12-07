@@ -11,15 +11,15 @@ import Game.Strategy
 -- Printing Functions --
 ------------------------
 
-printLocation :: (Show m, Show v) => GameExec m v ()
+printLocation :: (Show m) => GameExec m ()
 printLocation = do s <- liftM show location
                    liftIO $ putStr s
 
-printTranscript :: (Show m, Num v) => GameExec m v ()
+printTranscript :: (Show m) => GameExec m ()
 printTranscript = do n <- numGames
                      sequence_ $ map printTranscriptOfGame [1..n]
 
-printTranscriptOfGame :: (Show m, Num v) => Int -> GameExec m v ()
+printTranscriptOfGame :: (Show m) => Int -> GameExec m ()
 printTranscriptOfGame n =
     do ByGame ts <- transcripts
        ps <- players
@@ -30,11 +30,11 @@ printTranscriptOfGame n =
            event (PayoffEvent vs) = "  Payoff: " ++ show vs
         in liftIO $ putStr $ unlines $ map event t
 
-printSummaries :: (Show m, Num v) => GameExec m v ()
+printSummaries :: (Show m) => GameExec m ()
 printSummaries = do n <- numGames
                     sequence_ $ map printSummaryOfGame [1..n]
 
-printSummaryOfGame :: (Show m, Num v) => Int -> GameExec m v ()
+printSummaryOfGame :: (Show m) => Int -> GameExec m ()
 printSummaryOfGame n = 
     do ByGame ss <- summaries
        ps <- players
@@ -43,7 +43,7 @@ printSummaryOfGame n =
         in do liftIO $ putStr $ unlines ["  "++show p++" moves: "++show (reverse ms) | (p,ms) <- zip ps mss]
               liftIO $ putStrLn $ "  Score: "++show vs
 
-printScore :: (Show m, Num v) => GameExec m v ()
+printScore :: (Show m) => GameExec m ()
 printScore = do s <- liftM2 scoreString players (our score)
                 liftIO $ putStrLn "Score:"
                 liftIO . putStr =<< liftM2 scoreString players (our score)

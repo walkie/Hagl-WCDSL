@@ -10,10 +10,10 @@ import Game.Execution.Util
 -- Game Execution --
 --------------------
 
-runGame :: Game m v -> [Player m v] -> GameExec m v a -> IO (ExecState m v)
+runGame :: Game m -> [Player m] -> GameExec m a -> IO (ExecState m)
 runGame g ps f = execStateT f $ initState g ps
 
-step :: (Eq m, Num v) => GameExec m v ()
+step :: (Eq m) => GameExec m ()
 step = get >>= \state ->
     let t = _location state in case t of
       Decision t next ->
@@ -33,13 +33,13 @@ step = get >>= \state ->
                        _transcript = [],
                        _history = history }
 
-once :: (Eq m, Num v) => GameExec m v ()
+once :: (Eq m) => GameExec m ()
 once = do loc <- location
           case loc of
             Payoff _ -> step
             _ -> step >> once 
                        
-times :: (Eq m, Num v) => Int -> GameExec m v ()
+times :: (Eq m) => Int -> GameExec m ()
 times 0 = return ()
 times n = once >> times (n-1)
 
@@ -47,10 +47,10 @@ times n = once >> times (n-1)
 -- Utilities --
 ---------------
 
-initState :: Game m v -> [Player m v] -> ExecState m v
+initState :: Game m -> [Player m] -> ExecState m
 initState game ps = ExecState game ps (tree game) [] (ByGame [])
 
-summarize :: (Num v) => Game m v -> Transcript m v -> Summary m v
+summarize :: Game m -> Transcript m -> Summary m
 summarize g t = 
     let np = numPlayers g
         addmove i a as = take i as ++ ((a:(as!!i)) : drop i as)

@@ -10,7 +10,7 @@ import Game.Strategy
 
 -- Run a game with each successive collection of players. Aggregate the scores
 -- of all Players (based on name) and print the final scores.
-runGames :: (Show m, Num v, Ord v) => Game m v -> [[Player m v]] -> GameExec m v a -> IO ()
+runGames :: (Show m) => Game m -> [[Player m]] -> GameExec m a -> IO ()
 runGames g pss f = 
     let unique = nub $ concat pss
         run ps = runGame g ps f >>= \end -> evalStateT (our score) end
@@ -23,17 +23,17 @@ runGames g pss f =
 
 -- Run a tournament where all combinations of players are played
 -- where player 1 comes from list 1, player 2 from list 2, etc.
-tournament :: (Show m, Num v, Ord v) => Game m v -> [[Player m v]] -> GameExec m v a -> IO ()
+tournament :: (Show m) => Game m -> [[Player m]] -> GameExec m a -> IO ()
 tournament g pss = runGames g (allCombs pss)
 
 -- Run a tournament where all orders of all players are played 
 -- (including against selves).
-fullRoundRobin :: (Show m, Num v, Ord v) => Game m v -> [Player m v] -> GameExec m v a -> IO ()
+fullRoundRobin :: (Show m) => Game m -> [Player m] -> GameExec m a -> IO ()
 fullRoundRobin g ps = tournament g (replicate (numPlayers g) ps)
 
 -- Run a tournament where all unique combinations of players are played 
 -- (including against selves).
-roundRobin :: (Show m, Num v, Ord v) => Game m v -> [Player m v] -> GameExec m v a -> IO ()
+roundRobin :: (Show m) => Game m -> [Player m] -> GameExec m a -> IO ()
 roundRobin g ps = runGames g (allUnique (replicate (numPlayers g) ps))
 
 -----------------------
