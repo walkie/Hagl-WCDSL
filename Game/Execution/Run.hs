@@ -34,7 +34,7 @@ step = get >>= \state ->
                        _history = history }
 
 once :: (Eq m) => GameExec m ()
-once = do loc <- location
+once = do loc <- liftM _location get
           case loc of
             Payoff _ -> step
             _ -> step >> once 

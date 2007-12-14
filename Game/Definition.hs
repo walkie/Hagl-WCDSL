@@ -12,8 +12,8 @@ import Data.Tree
 -- Game Definition
 data Game m = Game {
     numPlayers :: Int,
-    tree       :: GameTree m,
-    infoGroup  :: GameTree m -> [GameTree m] 
+    info       :: GameTree m -> (InfoGroup m),
+    tree       :: GameTree m
 }
 
 -- Game Tree
@@ -21,6 +21,10 @@ data GameTree m = Decision Int [(m, GameTree m)]
                 | Chance [(Int, GameTree m)]
                 | Payoff [Float]
                 deriving (Eq)
+
+data InfoGroup m = Perfect (GameTree m)
+                 | Imperfect [GameTree m]
+                 deriving (Eq, Show)
 
 -- Instance Declarations
 instance (Show m) => Show (GameTree m) where
@@ -33,9 +37,9 @@ instance (Show m) => Show (GameTree m) where
 instance (Show m) => Show (Game m) where
   show g = show (tree g)
 
--- An infoGroup function for trees with perfect information.
-perfect :: GameTree m -> [GameTree m]
-perfect t = [t]
+-- An info function for trees with perfect information.
+perfect :: GameTree m -> InfoGroup m
+perfect t = Perfect t
 
 ----------------------------
 -- Normal Form Definition --
@@ -44,12 +48,12 @@ perfect t = [t]
 -- Construct a game from a Normal-Form definition
 normal :: Int -> [m] -> [[Float]] -> Game m
 normal np ms vs =
-    let nodes n = if n > np 
+    let nodes n = if n > np
           then [Payoff v | v <- vs]
           else [Decision n (zip ms ns) | ns <- chunk (length ms) (nodes (n+1))]
         group (Decision n _) = nodes n
         group t = [t]
-    in Game np (head $ nodes 1) group
+    in Game np (Imperfect . group) (head $ nodes 1)
 
 -- Construct a two-player Normal-Form game.
 matrix :: [m] -> [[Float]] -> Game m
@@ -68,7 +72,7 @@ extensive :: GameTree m -> Game m
 extensive t = let p (Decision i _) = i
                   p _ = 0
                   np = foldl1 max $ map p (bfs t)
-              in Game np t perfect
+              in Game np perfect t
 
 -----------------------------
 -- State-Driven Definition --
@@ -87,7 +91,7 @@ stateGame np who moves exec pay init =
         tree d = if end d 
           then Payoff (pay d)
           else Decision (who d) $ zip (moves d) $ map (tree . exec d) (moves d)
-    in Game np (tree init) perfect
+    in Game np perfect (tree init)
 
 ----------------------------
 -- Game Tree Construction --

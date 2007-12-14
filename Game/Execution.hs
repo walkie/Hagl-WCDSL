@@ -25,9 +25,9 @@ type Transcript m = [Event m]
 type Summary m = (ByPlayer [m], ByPlayer Float)
 
 data Event m = DecisionEvent Int m
-               | ChanceEvent Int
-               | PayoffEvent [Float]
-               deriving (Eq, Show)
+             | ChanceEvent Int
+             | PayoffEvent [Float]
+             deriving (Eq, Show)
 
 data ByGame a = ByGame [a] deriving (Eq, Show)
 data ByPlayer a = ByPlayer [a] deriving (Eq, Show)
@@ -67,8 +67,8 @@ game = liftM _game get
 players :: GameExec m [Player m]
 players = liftM _players get
 
-location :: GameExec m (GameTree m)
-location = liftM _location get
+location :: GameExec m (InfoGroup m)
+location = get >>= \s -> return $ info (_game s) (_location s)
 
 transcript :: GameExec m (Transcript m)
 transcript = liftM _transcript get

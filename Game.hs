@@ -1,12 +1,12 @@
 module Game (
   -- Game.Definition
-  Game(..), GameTree(..), perfect,
+  Game(..), GameTree(..), InfoGroup(..), perfect,
   normal, matrix, zerosum, extensive, stateGame,
   decision, chance, (<+>), (<|>),
   availMoves, asTree,
   children, bfs, dfs,
   -- Game.Execution
-  GameExec, ExecState(..), 
+  GameExec,
   History, Transcript, Summary, Event,
   ByGame(..), ByPlayer(..), asList, asList2,
   Name, Strategy, Player(..),

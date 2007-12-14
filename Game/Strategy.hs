@@ -16,7 +16,7 @@ pure = return
 
 -- Pick a move from the list of available moves randomly.
 random :: Strategy m
-random = randomFrom =<< liftM availMoves location
+random = randomFrom =<< liftM availMoves (liftM _location get)
 
 -- Pick a move randomly from a list.
 randomFrom :: [m] -> Strategy m
@@ -78,7 +78,7 @@ each f xs = (sequence . map f . map return) =<< xs
 
 -- The index of the current player.
 myIndex :: GameExec m Int
-myIndex = do Decision p _ <- location
+myIndex = do Decision p _ <- liftM _location get
              return (p-1)
 
 my :: GameExec m (ByPlayer a) -> GameExec m a
