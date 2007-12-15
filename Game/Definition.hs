@@ -125,19 +125,15 @@ instance Branch (GameTree m) (Int, GameTree m) where
 -------------------------
 
 -- Return the moves that are available from this node.
-availMoves :: (GameTree m) -> [m]
+availMoves :: GameTree m -> [m]
 availMoves (Decision _ ms) = map fst ms
 availMoves _ = []
 
--- Get the game tree as a Data.Tree structure.
-asTree :: GameTree m -> Tree (GameTree m)
-asTree t@(Decision _ ts) = Node t [asTree t' | t' <- snd (unzip ts)]
-asTree t@(Chance ts) = Node t [asTree t' | t' <- snd (unzip ts)]
-asTree t@(Payoff _) = Node t []
-
 -- The immediate children of a node.
 children :: GameTree m -> [GameTree m]
-children = map rootLabel . subForest . asTree
+children (Decision _ ms) = map snd ms
+children (Chance cs) = map snd cs
+children _ = []
 
 -- Search nodes in BFS order.
 bfs :: GameTree m -> [GameTree m]
@@ -148,6 +144,10 @@ bfs t = let b [] = []
 -- Search nodes DFS order.
 dfs :: GameTree m -> [GameTree m]
 dfs t = t : concatMap dfs (children t)
+
+-- Get the game tree as a Data.Tree structure.
+asTree :: GameTree m -> Tree (GameTree m)
+asTree t = Node t $ map asTree (children t)
 
 ---------------
 -- Utilities --

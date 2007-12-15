@@ -2,6 +2,7 @@ module Game.Strategy where
 
 import Control.Monad.State
 import Data.List
+import Data.Maybe
 import Game.Definition
 import Game.Execution
 import Game.Execution.Util
@@ -33,6 +34,16 @@ periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
 -- Perform some strategy on the first move, then another strategy thereafter.
 firstThen :: Strategy m -> Strategy m -> Strategy m
 firstThen first rest = isFirstGame >>= \b -> if b then first else rest
+
+-- Minimax with alpha-beta pruning.
+minimax :: Strategy m
+minimax = myIndex >>= \me -> location >>= \loc ->
+  let mm n@(Decision p _) = 
+         (if p == me then maximum else minimum) (map mm (children n))
+      mm (Payoff vs) = vs !! me
+  in case loc of
+       Imperfect ns -> undefined
+       Perfect n -> return $ availMoves n !! maxIndex (map mm (children n))
 
 --------------------------
 -- History Manipulation --
@@ -127,3 +138,10 @@ gamen :: Int -> GameExec m (ByGame a) -> GameExec m a
 gamen i x = do ByGame as <- x
                n <- numGames
                return $ as !! (n-i)
+
+---------------
+-- Utilities --
+---------------
+
+maxIndex :: (Ord a) => [a] -> Int
+maxIndex as = fromJust $ elemIndex (maximum as) as
