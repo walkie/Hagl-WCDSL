@@ -39,11 +39,12 @@ firstThen first rest = isFirstGame >>= \b -> if b then first else rest
 minimax :: Strategy m
 minimax = myIndex >>= \me -> location >>= \loc ->
   let mm n@(Decision p _) = 
-         (if p == me then maximum else minimum) (map mm (children n))
+         (if p == (me + 1) then maximum else minimum) (map mm (children n))
       mm (Payoff vs) = vs !! me
   in case loc of
        Imperfect ns -> undefined
-       Perfect n -> return $ availMoves n !! maxIndex (map mm (children n))
+       Perfect n -> do liftIO $ putStrLn (show (map mm (children n)))
+                       return $ availMoves n !! maxIndex (map mm (children n))
 
 --------------------------
 -- History Manipulation --
