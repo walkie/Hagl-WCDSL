@@ -35,16 +35,27 @@ periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
 firstThen :: Strategy m -> Strategy m -> Strategy m
 firstThen first rest = isFirstGame >>= \b -> if b then first else rest
 
--- Minimax with alpha-beta pruning.
-minimax :: Strategy m
+-- Minimax algorithm with alpha-beta pruning. Only defined for games with
+-- perfect information and no Chance nodes.
 minimax = myIndex >>= \me -> location >>= \loc ->
-  let mm n@(Decision p _) = 
-         (if p == (me + 1) then maximum else minimum) (map mm (children n))
-      mm (Payoff vs) = vs !! me
+  let isMe = ((me + 1) ==)
+      val alpha beta n@(Decision p _)
+         | alpha >= beta = if isMe p then alpha else beta
+         | otherwise =
+             let mm (a,b) n = let v = val a b n
+                              in if isMe p then (max a v, b)
+                                           else (a, min b v)
+                 (alpha', beta') = foldl mm (alpha, beta) (children n)
+             in if isMe p then alpha' else beta'
+      val _ _ (Payoff vs) = vs !! me
   in case loc of
        Imperfect ns -> undefined
-       Perfect n -> do liftIO $ putStrLn (show (map mm (children n)))
-                       return $ availMoves n !! maxIndex (map mm (children n))
+       Perfect n -> 
+         let vals = map (val (-infinity) infinity) (children n)
+         in return $ availMoves n !! maxIndex vals
+
+infinity :: Float
+infinity = 1/0
 
 --------------------------
 -- History Manipulation --
