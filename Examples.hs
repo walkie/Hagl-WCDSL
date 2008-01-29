@@ -115,7 +115,7 @@ crisis = extensive start
 -- Dice Rolling --
 ------------------
 
-die = Game 1 perfect $ Chance $ zip (repeat 1) (map (\a -> Payoff [a]) [1..6])
+die = Game 1 Perfect $ Chance $ zip (repeat 1) (map (\a -> Payoff [a]) [1..6])
 roll n = runGame die [Player "Total" $ return ()] (times n >> printScore)
 
 -----------------

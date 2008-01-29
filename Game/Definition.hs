@@ -37,10 +37,6 @@ instance (Show m) => Show (GameTree m) where
 instance (Show m) => Show (Game m) where
   show g = show (tree g)
 
--- An info function for trees with perfect information.
-perfect :: GameTree m -> InfoGroup m
-perfect t = Perfect t
-
 ----------------------------
 -- Normal Form Definition --
 ----------------------------
@@ -72,7 +68,7 @@ extensive :: GameTree m -> Game m
 extensive t = let p (Decision i _) = i
                   p _ = 0
                   np = foldl1 max $ map p (bfs t)
-              in Game np perfect t
+              in Game np Perfect t
 
 -----------------------------
 -- State-Driven Definition --
@@ -91,7 +87,7 @@ stateGame np who moves exec pay init =
         tree d = if end d 
           then Payoff (pay d)
           else Decision (who d) $ zip (moves d) $ map (tree . exec d) (moves d)
-    in Game np perfect (tree init)
+    in Game np Perfect (tree init)
 
 ----------------------------
 -- Game Tree Construction --

@@ -1,6 +1,6 @@
 module Hagl (
   -- Game.Definition
-  Game(..), GameTree(..), InfoGroup(..), perfect,
+  Game(..), GameTree(..), InfoGroup(..),
   normal, matrix, zerosum, extensive, stateGame,
   decision, chance, (<+>), (<|>),
   availMoves, asTree,
