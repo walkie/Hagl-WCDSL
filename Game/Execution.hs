@@ -12,11 +12,11 @@ type GameExec m a = StateT (ExecState m) IO a
 
 -- Game Execution State
 data ExecState m = ExecState {
-    _game       :: (Game m),       -- game definition
-    _players    :: [Player m],     -- players active in game
-    _location   :: (GameTree m),   -- current node in game tree
-    _transcript :: (Transcript m), -- events so far this game (newest at head)
-    _history    :: (History m)     -- a summary of each game
+    _game       :: Game m,       -- game definition
+    _players    :: [Player m],   -- players active in game
+    _location   :: GameTree m,   -- current node in game tree
+    _transcript :: Transcript m, -- events so far this game (newest at head)
+    _history    :: History m     -- a summary of each game
 }
 
 -- History
@@ -48,7 +48,7 @@ type Strategy m = GameExec m m
 
 data Player m = Player {
     playerName :: Name,
-    strategy   :: (Strategy m)
+    strategy   :: Strategy m
 }
 instance Show (Player m) where
     show = playerName

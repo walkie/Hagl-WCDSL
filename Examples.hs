@@ -1,5 +1,5 @@
 import Data.List
-import Game
+import Hagl
 
 ------------------------
 -- Prisoner's Dilemma --
@@ -130,8 +130,7 @@ empty :: Board -> [Int]
 empty = elemIndices Empty
 
 who :: Board -> Int
-who b | odd (length (empty b)) = 1
-      | otherwise = 2
+who b = if odd (length (empty b)) then 1 else 2
 
 avail :: Board -> [Move]
 avail b = if pay b /= [0,0] then []
@@ -141,22 +140,15 @@ exec :: Board -> Move -> Board
 exec b (i, m) = take i b ++ m : drop (i+1) b
 
 pay :: Board -> [Float]
-pay [X,X,X,_,_,_,_,_,_] = [1,-1]
-pay [_,_,_,X,X,X,_,_,_] = [1,-1]
-pay [_,_,_,_,_,_,X,X,X] = [1,-1]
-pay [X,_,_,X,_,_,X,_,_] = [1,-1]
-pay [_,X,_,_,X,_,_,X,_] = [1,-1]
-pay [_,_,X,_,_,X,_,_,X] = [1,-1]
-pay [X,_,_,_,X,_,_,_,X] = [1,-1]
-pay [_,_,X,_,X,_,X,_,_] = [1,-1]
-pay [O,O,O,_,_,_,_,_,_] = [-1,1]
-pay [_,_,_,O,O,O,_,_,_] = [-1,1]
-pay [_,_,_,_,_,_,O,O,O] = [-1,1]
-pay [O,_,_,O,_,_,O,_,_] = [-1,1]
-pay [_,O,_,_,O,_,_,O,_] = [-1,1]
-pay [_,_,O,_,_,O,_,_,O] = [-1,1]
-pay [O,_,_,_,O,_,_,_,O] = [-1,1]
-pay [_,_,O,_,O,_,O,_,_] = [-1,1]
-pay _ = [0,0]
+pay b | win X b = [1,-1]
+      | win O b = [-1,1]
+      | otherwise = [0,0]
+  where win s b = 
+          let h = chunk 3 b
+              v = transpose h
+              d = map (map (b !!)) [[0,4,8],[2,4,6]]
+          in or $ map (and . map (s ==)) (h ++ v ++ d)
+        chunk _ [] = []
+        chunk n l = (take n l) : chunk n (drop n l)
 
 ticTacToe = stateGame 2 who avail exec pay (take 9 (repeat Empty))

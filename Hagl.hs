@@ -1,4 +1,4 @@
-module Game (
+module Hagl (
   -- Game.Definition
   Game(..), GameTree(..), InfoGroup(..), perfect,
   normal, matrix, zerosum, extensive, stateGame,

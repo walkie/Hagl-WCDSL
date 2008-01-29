@@ -12,7 +12,7 @@ import Data.Tree
 -- Game Definition
 data Game m = Game {
     numPlayers :: Int,
-    info       :: GameTree m -> (InfoGroup m),
+    info       :: GameTree m -> InfoGroup m,
     tree       :: GameTree m
 }
 
@@ -111,14 +111,9 @@ Payoff as <+> Payoff bs = Payoff [a + b | (a,b) <- zip as bs]
 Chance as <+> Chance bs = Chance (as ++ bs)
 Decision a as <+> Decision b bs | a == b = Decision a (as ++ bs)
 
--- Add a branch to a game tree.
--- TODO this doesn't work very well...  Maybe restrict to just adding Decision branches...
-class Branch t b where
-    (<|>) :: t -> b -> t
-instance Branch (GameTree m) (m, GameTree m) where
-    Decision i ms <|> m = Decision i (m:ms)
-instance Branch (GameTree m) (Int, GameTree m) where
-    Chance cs <|> c = Chance (c:cs)
+-- Add a decision branch to a game tree.
+(<|>) :: GameTree m -> (m, GameTree m) -> GameTree m
+Decision i ms <|> m = Decision i (m:ms)
 
 -------------------------
 -- Game Tree Traversal --
