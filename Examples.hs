@@ -6,7 +6,7 @@ import Hagl
 ------------------------
 
 -- Game definition
-data PDMove = Cooperate | Defect deriving (Show, Eq)
+data PD = Cooperate | Defect deriving (Show, Eq)
 
 pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 
@@ -61,11 +61,11 @@ preserver = Player "Preserver" $
 -- Rock Paper Scissors --
 -------------------------
 
-data RPSMove = Rock | Paper | Scissors deriving (Eq, Show)
+data RPS = Rock | Paper | Scissors deriving (Enum, Eq, Show)
 
-rps = zerosum [Rock,Paper,Scissors] [0,-1, 1,
-                                     1, 0,-1,
-                                    -1, 1, 0]
+rps = zerosum [Rock .. Scissors] [0,-1, 1,
+                                  1, 0,-1,
+                                 -1, 1, 0]
 
 -- Some simple players
 rocky = Player "Stalone" $ pure Rock
