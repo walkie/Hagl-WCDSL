@@ -24,7 +24,8 @@ data GameTree m = Decision Int [(m, GameTree m)]
 
 data InfoGroup m = Perfect (GameTree m)
                  | Imperfect [GameTree m]
-                 deriving (Eq, Show)
+                 deriving (Eq)
+
 
 -- Instance Declarations
 instance (Show m) => Show (GameTree m) where
@@ -36,6 +37,9 @@ instance (Show m) => Show (GameTree m) where
                        in unlines $ filter empty $ lines s
 instance (Show m) => Show (Game m) where
   show g = show (tree g)
+instance (Show m) => Show (InfoGroup m) where
+  show (Perfect t) = show t
+  show (Imperfect ts) = unlines $ intersperse " ** or **" (map (init . show) ts)
 
 ----------------------------
 -- Normal Form Definition --
@@ -44,7 +48,8 @@ instance (Show m) => Show (Game m) where
 -- Construct a game from a Normal-Form definition
 normal :: Int -> [m] -> [[Float]] -> Game m
 normal np ms vs =
-    let chunk n l = (take n l) : chunk n (drop n l)
+    let chunk _ [] = []
+        chunk n l = (take n l) : chunk n (drop n l)
         nodes n = if n > np
           then [Payoff v | v <- vs]
           else [Decision n (zip ms ns) | ns <- chunk (length ms) (nodes (n+1))]
