@@ -44,7 +44,8 @@ instance (Show m) => Show (Game m) where
 -- Construct a game from a Normal-Form definition
 normal :: Int -> [m] -> [[Float]] -> Game m
 normal np ms vs =
-    let nodes n = if n > np
+    let chunk n l = (take n l) : chunk n (drop n l)
+        nodes n = if n > np
           then [Payoff v | v <- vs]
           else [Decision n (zip ms ns) | ns <- chunk (length ms) (nodes (n+1))]
         group (Decision n _) = nodes n
@@ -139,12 +140,3 @@ dfs t = t : concatMap dfs (children t)
 -- Get the game tree as a Data.Tree structure.
 asTree :: GameTree m -> Tree (GameTree m)
 asTree t = Node t $ map asTree (children t)
-
----------------
--- Utilities --
----------------
-
--- Split a list into n-sized chunks.
-chunk :: Int -> [a] -> [[a]]
-chunk _ [] = []
-chunk n l = (take n l) : chunk n (drop n l)
