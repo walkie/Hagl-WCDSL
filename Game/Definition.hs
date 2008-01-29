@@ -58,7 +58,7 @@ matrix = normal 2
 
 -- Construct a two-player Zero-Sum game.
 zerosum :: [m] -> [Float] -> Game m
-zerosum ms vs = normal 2 ms (map (\v -> [v, -v]) vs)
+zerosum ms vs = matrix ms (map (\v -> [v, -v]) vs)
 
 -------------------------------
 -- Extensive Form Definition --

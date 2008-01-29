@@ -13,11 +13,11 @@ pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 -- Some simple players.
 fink = Player "Fink" (pure Defect)
 mum = Player "Mum" (pure Cooperate)
-cd = Player "(CD)*" (periodic [Cooperate, Defect])
+alt = Player "Alternator" (periodic [Cooperate, Defect])
 dc = Player "(DC)*" (periodic [Cooperate, Defect])
 ccd = Player "(CCD)*" (periodic [Cooperate, Cooperate, Defect])
 randy = Player "Randy" random
-roulette = Player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
+rr = Player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
 
 -- The famous Tit-for-Tat.
 titForTat = Player "Tit-for-Tat" $ 
