@@ -54,7 +54,7 @@ summarize :: Game m -> Transcript m -> Summary m
 summarize g t = 
     let np = numPlayers g
         addmove i a as = take i as ++ ((a:(as!!i)) : drop i as)
-        payoffs (PayoffEvent vs : es) = [a + b | (a, b) <- zip vs (payoffs es)]
+        payoffs (PayoffEvent vs : es) = zipWith (+) vs (payoffs es)
         payoffs (e : es) = payoffs es
         payoffs [] = take np (repeat 0)
         moves (DecisionEvent i m : es) = addmove (i-1) m (moves es)

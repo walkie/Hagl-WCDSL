@@ -31,6 +31,18 @@ mixed = randomFrom . expandDist
 periodic :: [m] -> Strategy m
 periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
 
+--first :: Strategy m -> (Int -> Strategy m) -> Strategy m
+--first s ss = numGames >>= \n -> if n == 0 then s else ss (n-1)
+
+first :: Strategy m -> [Strategy m] -> Strategy m
+first s ss = numGames >>= \n -> (s:ss) !! min n (length ss)
+
+next :: Strategy m -> [Strategy m] -> [Strategy m]
+next = (:)
+
+finally :: Strategy m -> [Strategy m]
+finally = (:[])
+
 -- Perform some strategy on the first move, then another strategy thereafter.
 firstThen :: Strategy m -> Strategy m -> Strategy m
 firstThen first rest = isFirstGame >>= \b -> if b then first else rest
@@ -38,7 +50,7 @@ firstThen first rest = isFirstGame >>= \b -> if b then first else rest
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
 -- perfect information and no Chance nodes.
 minimax = myIndex >>= \me -> location >>= \loc ->
-  let isMe = ((me + 1) ==)
+  let isMe = (me + 1 ==)
       val alpha beta n@(Decision p _)
          | alpha >= beta = if isMe p then alpha else beta
          | otherwise =
@@ -134,8 +146,8 @@ playern i x = do ByPlayer as <- x
 every :: GameExec m (ByGame a) -> GameExec m [a]
 every = liftM asList
 
-first :: GameExec m (ByGame a) -> GameExec m a
-first = liftM (last . asList)
+--first :: GameExec m (ByGame a) -> GameExec m a
+--first = liftM (last . asList)
 
 firstn :: Int -> GameExec m (ByGame a) -> GameExec m [a]
 firstn n = liftM (reverse . take n . reverse . asList)

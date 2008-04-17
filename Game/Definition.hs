@@ -48,9 +48,7 @@ instance (Show m) => Show (InfoGroup m) where
 -- Construct a game from a Normal-Form definition
 normal :: Int -> [m] -> [[Float]] -> Game m
 normal np ms vs =
-    let chunk _ [] = []
-        chunk n l = (take n l) : chunk n (drop n l)
-        nodes n = if n > np
+    let nodes n = if n > np
           then [Payoff v | v <- vs]
           else [Decision n (zip ms ns) | ns <- chunk (length ms) (nodes (n+1))]
         group (Decision n _) = nodes n
@@ -63,7 +61,7 @@ matrix = normal 2
 
 -- Construct a two-player Zero-Sum game.
 zerosum :: [m] -> [Float] -> Game m
-zerosum ms vs = matrix ms (map (\v -> [v, -v]) vs)
+zerosum ms vs = matrix ms [[v, -v] | v <- vs]
 
 -------------------------------
 -- Extensive Form Definition --
@@ -109,7 +107,7 @@ chance c = Chance [c]
 
 -- Combines two game trees.
 (<+>) :: (Eq m) => GameTree m -> GameTree m -> GameTree m
-Payoff as <+> Payoff bs = Payoff [a + b | (a,b) <- zip as bs]
+Payoff as <+> Payoff bs = Payoff (zipWith (+) as bs)
 Chance as <+> Chance bs = Chance (as ++ bs)
 Decision a as <+> Decision b bs | a == b = Decision a (as ++ bs)
 
@@ -145,3 +143,12 @@ dfs t = t : concatMap dfs (children t)
 -- Get the game tree as a Data.Tree structure.
 asTree :: GameTree m -> Tree (GameTree m)
 asTree t = Node t $ map asTree (children t)
+
+-----------------------
+-- Utility Functions --
+-----------------------
+
+-- Break a list into n equal-sized chunks.
+chunk :: Int -> [a] -> [[a]]
+chunk _ [] = []
+chunk n l = (take n l) : chunk n (drop n l)

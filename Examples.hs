@@ -115,7 +115,7 @@ crisis = extensive start
 -- Dice Rolling --
 ------------------
 
-die = Game 1 Perfect $ Chance $ zip (repeat 1) (map (\a -> Payoff [a]) [1..6])
+die = Game 1 Perfect $ Chance [(1, Payoff [a]) | a <- [1..6]]
 roll n = runGame die [Player "Total" $ return ()] (times n >> printScore)
 
 -----------------
@@ -134,7 +134,7 @@ who b = if odd (length (empty b)) then 1 else 2
 
 avail :: Board -> [Move]
 avail b = if pay b /= [0,0] then []
-          else zip (empty b) (repeat ([X,O] !! (who b - 1)))
+          else [(i, [X,O] !! (who b - 1)) | i <- empty b]
 
 exec :: Board -> Move -> Board
 exec b (i, m) = take i b ++ m : drop (i+1) b
