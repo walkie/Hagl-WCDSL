@@ -8,7 +8,7 @@ import Game.Definition
 -----------
 
 -- Game Execution Monad
-type GameExec m a = StateT (ExecState m) IO a
+type GameExec m = StateT (ExecState m) IO
 
 -- Game Execution State
 data ExecState m = ExecState {
@@ -45,6 +45,7 @@ asList2 = map asList . asList
 -- Player/Strategy
 type Name = String
 type Strategy m = GameExec m m
+type StatefulStrategy s m = StateT s (GameExec m) m
 
 data Player m = Player {
     playerName :: Name,

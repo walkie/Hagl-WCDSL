@@ -6,6 +6,7 @@ import Data.Maybe
 import Game.Definition
 import Game.Execution
 import Game.Execution.Util
+import Game.Util
 
 -----------------------
 -- Common Strategies --
@@ -31,11 +32,8 @@ mixed = randomFrom . expandDist
 periodic :: [m] -> Strategy m
 periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
 
---first :: Strategy m -> (Int -> Strategy m) -> Strategy m
---first s ss = numGames >>= \n -> if n == 0 then s else ss (n-1)
-
-first :: Strategy m -> [Strategy m] -> Strategy m
-first s ss = numGames >>= \n -> (s:ss) !! min n (length ss)
+initially :: Strategy m -> [Strategy m] -> Strategy m
+initially s ss = numGames >>= \n -> (s:ss) !!! n
 
 next :: Strategy m -> [Strategy m] -> [Strategy m]
 next = (:)
@@ -44,8 +42,23 @@ finally :: Strategy m -> [Strategy m]
 finally = (:[])
 
 -- Perform some strategy on the first move, then another strategy thereafter.
-firstThen :: Strategy m -> Strategy m -> Strategy m
-firstThen first rest = isFirstGame >>= \b -> if b then first else rest
+initiallyThen :: Strategy m -> Strategy m -> Strategy m
+initiallyThen a b = initially a $ finally b
+
+{-
+stateful :: s -> StatefulStrategy s m -> Strategy m
+stateful s m = 
+  where g s = evalStateT m s : g 
+
+stateful :: s -> (s -> GameExec m (s,m)) -> Strategy m
+stateful s f = numGames >>= \n -> (g s) !!! n
+  where g s = (do (s', m) <- f s
+                  return m) : g s
+
+stateful :: s -> (s -> (s, Strategy m)) -> Strategy m
+stateful s f = numGames >>= \n -> (g s) !!! n
+  where g s = let (s', m) = f s in m : g s'
+-}
 
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
 -- perfect information and no Chance nodes.
@@ -139,15 +152,15 @@ their x = do ByPlayer as <- x
 
 playern :: Int -> GameExec m (ByPlayer a) -> GameExec m a
 playern i x = do ByPlayer as <- x
-                 return $ as !! i
+                 return $ as !! (i-1)
 
 -- ByGame Selection --
 
 every :: GameExec m (ByGame a) -> GameExec m [a]
 every = liftM asList
 
---first :: GameExec m (ByGame a) -> GameExec m a
---first = liftM (last . asList)
+first :: GameExec m (ByGame a) -> GameExec m a
+first = liftM (last . asList)
 
 firstn :: Int -> GameExec m (ByGame a) -> GameExec m [a]
 firstn n = liftM (reverse . take n . reverse . asList)

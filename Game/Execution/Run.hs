@@ -5,6 +5,7 @@ import Data.Maybe
 import Game.Definition
 import Game.Execution
 import Game.Execution.Util
+import Game.Util
 
 --------------------
 -- Game Execution --

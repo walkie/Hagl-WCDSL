@@ -11,9 +11,17 @@ import Game.Strategy
 -- Printing Functions --
 ------------------------
 
-printLocation :: (Show m) => GameExec m ()
-printLocation = do s <- liftM show location
-                   liftIO $ putStr s
+print :: (Show a) => GameExec m a -> GameExec m ()
+print = (>>= liftIO . putStr . show)
+
+printLn :: (Show a) => GameExec m a -> GameExec m ()
+printLn = (>>= liftIO . putStrLn . show)
+
+printStr :: String -> GameExec m ()
+printStr = liftIO . putStr
+
+printStrLn :: String -> GameExec m ()
+printStrLn = liftIO . putStrLn
 
 printTranscript :: (Show m) => GameExec m ()
 printTranscript = do n <- numGames
@@ -23,12 +31,12 @@ printTranscriptOfGame :: (Show m) => Int -> GameExec m ()
 printTranscriptOfGame n =
     do ByGame ts <- transcripts
        ps <- players
-       liftIO $ putStrLn $ "Game "++show n++ ":"
+       printStrLn $ "Game "++show n++":"
        let t = reverse $ ts !! (length ts - n)
            event (DecisionEvent i m) = "  " ++ show (ps !! (i-1)) ++ "'s move: " ++ show m
            event (ChanceEvent i) = "  Chance: " ++ show i
            event (PayoffEvent vs) = "  Payoff: " ++ show vs
-        in liftIO $ putStr $ unlines $ map event t
+        in printStr $ unlines $ map event t
 
 printSummaries :: (Show m) => GameExec m ()
 printSummaries = do n <- numGames
@@ -38,12 +46,12 @@ printSummaryOfGame :: (Show m) => Int -> GameExec m ()
 printSummaryOfGame n = 
     do ByGame ss <- summaries
        ps <- players
-       liftIO $ putStrLn $ "Summary of Game "++show n++":"
+       printStrLn $ "Summary of Game "++show n++":"
        let (ByPlayer mss, ByPlayer vs) = ss !! (length ss - n)
-        in do liftIO $ putStr $ unlines ["  "++show p++" moves: "++show (reverse ms) | (p,ms) <- zip ps mss]
-              liftIO $ putStrLn $ "  Score: "++show vs
+        in do printStr $ unlines ["  "++show p++" moves: "++show (reverse ms) | (p,ms) <- zip ps mss]
+              printStrLn $ "  Score: "++show vs
 
 printScore :: (Show m) => GameExec m ()
 printScore = do s <- liftM2 scoreString players (our score)
-                liftIO $ putStrLn "Score:"
-                liftIO . putStr =<< liftM2 scoreString players (our score)
+                printStrLn "Score:"
+                printStr =<< liftM2 scoreString players (our score)

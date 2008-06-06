@@ -4,6 +4,7 @@ module Game.Definition where
 
 import Data.List
 import Data.Tree
+import Game.Util
 
 ---------------------
 -- Game Definition --
@@ -143,12 +144,3 @@ dfs t = t : concatMap dfs (children t)
 -- Get the game tree as a Data.Tree structure.
 asTree :: GameTree m -> Tree (GameTree m)
 asTree t = Node t $ map asTree (children t)
-
------------------------
--- Utility Functions --
------------------------
-
--- Break a list into n equal-sized chunks.
-chunk :: Int -> [a] -> [[a]]
-chunk _ [] = []
-chunk n l = (take n l) : chunk n (drop n l)

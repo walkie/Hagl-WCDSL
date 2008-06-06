@@ -1,6 +1,9 @@
 import Data.List
 import Hagl
 
+import Control.Monad.State
+import Prelude hiding (print)
+
 ------------------------
 -- Prisoner's Dilemma --
 ------------------------
@@ -21,11 +24,24 @@ rr = Player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
 
 -- The famous Tit-for-Tat.
 titForTat = Player "Tit-for-Tat" $ 
-    return Cooperate `firstThen` his (prev move)
+    return Cooperate `initiallyThen` his (prev move)
+
+stately1 :: StatefulStrategy m m
+stately1 =
+  do m <- get
+     m' <- lift (his (prev move))
+     put m'
+     return m
+     
+stately2 :: StatefulStrategy m m
+stately2 = lift (his (prev move))
+
+--stately3 :: StatefulStrategy m m
+--stately3 = his (prev move)
 
 -- Suspicious Tit-for-Tat (like Tit-for-Tat but defect on first move)
 suspicious = Player "Suspicious Tit-for-Tat" $ 
-    return Defect `firstThen` his (prev move)
+    return Defect `initiallyThen` his (prev move)
 
 -- Tit-for-Tat that only defects after two defects in a row.
 titForTwoTats = Player "Tit-for-Two-Tats" $
@@ -39,7 +55,7 @@ grim = Player "Grim Trigger" $
 
 -- If last move resulted in a "big" payoff, do it again, otherwise switch.
 pavlov = Player "Pavlov" $
-    random `firstThen`
+    random `initiallyThen`
     do p <- my (prev payoff)
        m <- my (prev move)
        return $ if p > 1 then m else
@@ -48,7 +64,7 @@ pavlov = Player "Pavlov" $
 -- Made-up strategy: Pick randomly until we have a lead, then
 -- preserve it by repeatedly choosing Defect.
 preserver = Player "Preserver" $
-    random `firstThen`
+    random `initiallyThen`
     do me <- my score
        he <- his score
        if me > he then return Defect else random
@@ -82,6 +98,12 @@ frequency = Player "Huckleberry" $
         in return $ if x == r then Paper else 
                     if x == p then Scissors
                               else Rock
+
+{-
+statelyTitForTat i = Player "Oregon" $ 
+  stateful i 
+  stateful i (\m -> his (prev move) >>= (\m' -> (m, return m)))
+-}
 
 --------------------------
 -- Cuban Missile Crisis --
@@ -148,7 +170,5 @@ pay b | win X b = [1,-1]
               v = transpose h
               d = map (map (b !!)) [[0,4,8],[2,4,6]]
           in or $ map (and . map (s ==)) (h ++ v ++ d)
-        chunk _ [] = []
-        chunk n l = (take n l) : chunk n (drop n l)
 
 ticTacToe = stateGame 2 who avail exec pay (take 9 (repeat Empty))
