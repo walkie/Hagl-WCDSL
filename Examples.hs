@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-monomorphism-restriction #-}
+
 import Data.List
 import Hagl
 
@@ -14,47 +16,39 @@ data PD = Cooperate | Defect deriving (Show, Eq)
 pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 
 -- Some simple players.
-fink = Player "Fink" (pure Defect)
-mum = Player "Mum" (pure Cooperate)
-alt = Player "Alternator" (periodic [Cooperate, Defect])
-dc = Player "(DC)*" (periodic [Cooperate, Defect])
-ccd = Player "(CCD)*" (periodic [Cooperate, Cooperate, Defect])
-randy = Player "Randy" random
-rr = Player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
+fink = player "Fink" (pure Defect)
+mum = player "Mum" (pure Cooperate)
+alt = player "Alternator" (periodic [Cooperate, Defect])
+dc = player "(DC)*" (periodic [Cooperate, Defect])
+ccd = player "(CCD)*" (periodic [Cooperate, Cooperate, Defect])
+randy = player "Randy" random
+rr = player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
 
 -- The famous Tit-for-Tat.
-titForTat = Player "Tit-for-Tat" $ 
+titForTat = player "Tit-for-Tat" $
     return Cooperate `initiallyThen` his (prev move)
 
-stately1 :: StatefulStrategy m m
-stately1 =
+stately = stateful "Stately Alternator" Cooperate $
   do m <- get
-     m' <- lift (his (prev move))
-     put m'
+     put $ if m == Cooperate then Defect else Cooperate
      return m
      
-stately2 :: StatefulStrategy m m
-stately2 = lift (his (prev move))
-
---stately3 :: StatefulStrategy m m
---stately3 = his (prev move)
-
 -- Suspicious Tit-for-Tat (like Tit-for-Tat but defect on first move)
-suspicious = Player "Suspicious Tit-for-Tat" $ 
+suspicious = player "Suspicious Tit-for-Tat" $ 
     return Defect `initiallyThen` his (prev move)
 
 -- Tit-for-Tat that only defects after two defects in a row.
-titForTwoTats = Player "Tit-for-Two-Tats" $
+titForTwoTats = player "Tit-for-Two-Tats" $
     do ms <- his `each` prevn 2 move
        return $ if ms == [Defect, Defect] then Defect else Cooperate
 
 -- The Grim Trigger: Cooperates until opponent defects, then defects forever.
-grim = Player "Grim Trigger" $
+grim = player "Grim Trigger" $
     do ms <- his `each` every move
        return $ if Defect `elem` ms then Defect else Cooperate
 
 -- If last move resulted in a "big" payoff, do it again, otherwise switch.
-pavlov = Player "Pavlov" $
+pavlov = player "Pavlov" $
     random `initiallyThen`
     do p <- my (prev payoff)
        m <- my (prev move)
@@ -63,7 +57,7 @@ pavlov = Player "Pavlov" $
 
 -- Made-up strategy: Pick randomly until we have a lead, then
 -- preserve it by repeatedly choosing Defect.
-preserver = Player "Preserver" $
+preserver = player "Preserver" $
     random `initiallyThen`
     do me <- my score
        he <- his score
@@ -84,12 +78,12 @@ rps = zerosum [Rock .. Scissors] [0,-1, 1,
                                  -1, 1, 0]
 
 -- Some simple players
-rocky = Player "Stalone" $ pure Rock
-rotate = Player "RPS" $ periodic [Rock, Paper, Scissors]
+rocky = player "Stalone" $ pure Rock
+rotate = player "RPS" $ periodic [Rock, Paper, Scissors]
 -- can reuse randy from above!
 
 -- Play the move that will beat the move the opponent has played most.
-frequency = Player "Huckleberry" $
+frequency = player "Huckleberry" $
     do ms <- his `each` every move
        let r = length $ filter (Rock ==) ms
            p = length $ filter (Paper ==) ms
@@ -138,7 +132,7 @@ crisis = extensive start
 ------------------
 
 die = Game 1 Perfect $ Chance [(1, Payoff [a]) | a <- [1..6]]
-roll n = runGame die [Player "Total" $ return ()] (times n >> printScore)
+roll n = runGame die [player "Total" $ return ()] (times n >> printScore)
 
 -----------------
 -- Tic Tac Toe --

@@ -6,14 +6,13 @@ module Hagl (
   availMoves, asTree,
   children, bfs, dfs,
   -- Game.Execution
-  GameExec,
   History, Transcript, Summary, Event,
   ByGame(..), ByPlayer(..), asList, asList2,
-  Name, Strategy, Player(..),
-  StatefulStrategy,
+  PlayerName, Player, playerName, player, stateful,
+  GameExec, Strategy, GameMonad,
   game, players, location, transcript, history, numGames,
   -- Game.Execution.Run
-  runGame, step, once, times,
+  evalGame, runGame, step, once, times,
   -- Game.Execution.Print
   print, printLn, printStr, printStrLn,
   printTranscript, printTranscriptOfGame,

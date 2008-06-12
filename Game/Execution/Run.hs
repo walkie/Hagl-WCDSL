@@ -11,16 +11,25 @@ import Game.Util
 -- Game Execution --
 --------------------
 
+evalGame :: Game m -> [Player m] -> GameExec m a -> IO a
+evalGame g ps (ExecM f) = evalStateT f $ initState g ps
+
 runGame :: Game m -> [Player m] -> GameExec m a -> IO (ExecState m)
-runGame g ps f = execStateT f $ initState g ps
+runGame g ps (ExecM f) = execStateT f $ initState g ps
+
+runStrategy :: PlayerStrategy mv -> GameExec mv (mv, PlayerStrategy mv)
+runStrategy (PlayerStrategy m s) = do (mv, s') <- runStateT (unS m) s
+                                      return (mv, PlayerStrategy m s')
 
 step :: (Eq m) => GameExec m ()
 step = get >>= \state ->
     let t = _location state in case t of
       Decision t next ->
-        do m <- strategy $ _players state !! (t-1)
-           put state { _location = fromJust $ lookup m next,
-                       _transcript = DecisionEvent t m : _transcript state }
+        let (ph, (p:pt)) = splitAt (t-1) $ _players state 
+        in do (m, s) <- runStrategy $ playerStrategy p
+              put state { _players = ph ++ p { playerStrategy = s } : pt,
+                          _location = fromJust $ lookup m next,
+                          _transcript = DecisionEvent t m : _transcript state }
       Chance dist ->
         let expanded = expandDist dist
         in do i <- randomIndex expanded

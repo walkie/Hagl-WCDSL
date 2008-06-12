@@ -13,7 +13,7 @@ import Game.Strategy
 runGames :: (Show m) => Game m -> [[Player m]] -> GameExec m a -> IO ()
 runGames g pss f = 
     let unique = nub $ concat pss
-        run ps = runGame g ps f >>= \end -> evalStateT (our score) end
+        run ps = evalGame g ps (f >> our score)
     in sequence (map run pss) >>= \vss ->
          let pis = map (flip elemIndices (concat pss)) unique
              vs =  map (sum . map ((concat vss) !!)) pis

@@ -13,55 +13,45 @@ import Game.Util
 -----------------------
 
 -- Construct a pure strategy. Always play the same move.
-pure :: m -> Strategy m
+pure :: mv -> Strategy mv s
 pure = return
 
 -- Pick a move from the list of available moves randomly.
-random :: Strategy m
-random = randomFrom =<< liftM availMoves (liftM _location get)
+random :: Eq mv => Strategy mv s
+random = do loc <- location
+            let ms = case loc of
+                       Perfect t -> availMoves t 
+                       Imperfect ts -> foldl1 intersect (map availMoves ts)
+             in randomFrom ms
 
 -- Pick a move randomly from a list.
-randomFrom :: [m] -> Strategy m
+randomFrom :: [mv] -> Strategy mv s
 randomFrom as = liftM (as !!) (randomIndex as)
 
 -- Construct a mixed strategy. Play moves based on a distribution.
-mixed :: [(Int, m)] -> Strategy m
+mixed :: [(Int, mv)] -> Strategy mv s
 mixed = randomFrom . expandDist
 
 -- Perform some pattern of moves periodically.
-periodic :: [m] -> Strategy m
+periodic :: [mv] -> Strategy mv s
 periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
 
-initially :: Strategy m -> [Strategy m] -> Strategy m
+initially :: Strategy mv s -> [Strategy mv s] -> Strategy mv s
 initially s ss = numGames >>= \n -> (s:ss) !!! n
 
-next :: Strategy m -> [Strategy m] -> [Strategy m]
+next :: Strategy mv s -> [Strategy mv s] -> [Strategy mv s]
 next = (:)
 
-finally :: Strategy m -> [Strategy m]
+finally :: Strategy mv s -> [Strategy mv s]
 finally = (:[])
 
 -- Perform some strategy on the first move, then another strategy thereafter.
-initiallyThen :: Strategy m -> Strategy m -> Strategy m
+initiallyThen :: Strategy mv s -> Strategy mv s -> Strategy mv s
 initiallyThen a b = initially a $ finally b
-
-{-
-stateful :: s -> StatefulStrategy s m -> Strategy m
-stateful s m = 
-  where g s = evalStateT m s : g 
-
-stateful :: s -> (s -> GameExec m (s,m)) -> Strategy m
-stateful s f = numGames >>= \n -> (g s) !!! n
-  where g s = (do (s', m) <- f s
-                  return m) : g s
-
-stateful :: s -> (s -> (s, Strategy m)) -> Strategy m
-stateful s f = numGames >>= \n -> (g s) !!! n
-  where g s = let (s', m) = f s in m : g s'
--}
 
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
 -- perfect information and no Chance nodes.
+minimax :: Strategy mv s
 minimax = myIndex >>= \me -> location >>= \loc ->
   let isMe = (me + 1 ==)
       val alpha beta n@(Decision p _)
@@ -87,31 +77,31 @@ infinity = 1/0
 --------------------------
 
 -- True if this is the first iteration in this execution instance.
-isFirstGame :: GameExec m Bool
+isFirstGame :: GameMonad m mv => m Bool
 isFirstGame = liftM (null . asList) history
 
 -- Transcript of each game.
-transcripts :: GameExec m (ByGame (Transcript m))
+transcripts :: GameMonad m mv => m (ByGame (Transcript mv))
 transcripts = liftM (ByGame . fst . unzip . asList) history
 
 -- Summary of each game.
-summaries :: GameExec m (ByGame (Summary m))
+summaries :: GameMonad m mv => m (ByGame (Summary mv))
 summaries = liftM (ByGame . snd . unzip . asList) history
 
 -- All moves made by each player in each game.
-moves :: GameExec m (ByGame (ByPlayer [m]))
+moves :: GameMonad m mv => m (ByGame (ByPlayer [mv]))
 moves = liftM (ByGame . fst . unzip . asList) summaries
 
 -- The last move by each player in each game.
-move :: GameExec m (ByGame (ByPlayer m))
+move :: GameMonad m mv => m (ByGame (ByPlayer mv))
 move = liftM (ByGame . map (ByPlayer . map head) . asList2) moves
 
 -- The total payoff for each player for each game.
-payoff :: GameExec m (ByGame (ByPlayer Float))
+payoff :: GameMonad m mv => m (ByGame (ByPlayer Float))
 payoff = liftM (ByGame . snd . unzip . asList) summaries
 
 -- The current score of each player.
-score :: GameExec m (ByPlayer Float)
+score :: GameMonad m mv => m (ByPlayer Float)
 score = liftM (ByPlayer . map sum . transpose . asList2) payoff
 
 -------------------------
@@ -119,59 +109,59 @@ score = liftM (ByPlayer . map sum . transpose . asList2) payoff
 -------------------------
 
 -- Apply selection to each element of a list.
-each :: (GameExec m a -> GameExec m b) -> GameExec m [a] -> GameExec m [b]
+each :: Monad m => (m a -> m b) -> m [a] -> m [b]
 each f xs = (sequence . map f . map return) =<< xs
 
 -- ByPlayer Selection --
 
 -- The index of the current player.
-myIndex :: GameExec m Int
-myIndex = do Decision p _ <- liftM _location get
+myIndex :: GameMonad m mv => m Int
+myIndex = do Decision p _ <- _exactLoc
              return (p-1)
 
-my :: GameExec m (ByPlayer a) -> GameExec m a
+my :: GameMonad m mv => m (ByPlayer a) -> m a
 my x = liftM2 (!!) (liftM asList x) myIndex
 
 -- Selects the next player's x.
-his :: GameExec m (ByPlayer a) -> GameExec m a
+his :: GameMonad m mv => m (ByPlayer a) -> m a
 his x = do ByPlayer as <- x
            i <- myIndex
            g <- game
            return $ as !! ((i+1) `mod` numPlayers g)
 
-her :: GameExec m (ByPlayer a) -> GameExec m a
+her :: GameMonad m mv => m (ByPlayer a) -> m a
 her = his
 
-our :: GameExec m (ByPlayer a) -> GameExec m [a]
+our :: GameMonad m mv => m (ByPlayer a) -> m [a]
 our = liftM asList
 
-their :: GameExec m (ByPlayer a) -> GameExec m [a]
+their :: GameMonad m mv => m (ByPlayer a) -> m [a]
 their x = do ByPlayer as <- x
              i <- myIndex
              return $ (take i as) ++ (drop (i+1) as)
 
-playern :: Int -> GameExec m (ByPlayer a) -> GameExec m a
+playern :: GameMonad m mv => Int -> m (ByPlayer a) -> m a
 playern i x = do ByPlayer as <- x
                  return $ as !! (i-1)
 
 -- ByGame Selection --
 
-every :: GameExec m (ByGame a) -> GameExec m [a]
+every :: GameMonad m mv => m (ByGame a) -> m [a]
 every = liftM asList
 
-first :: GameExec m (ByGame a) -> GameExec m a
+first :: GameMonad m mv => m (ByGame a) -> m a
 first = liftM (last . asList)
 
-firstn :: Int -> GameExec m (ByGame a) -> GameExec m [a]
+firstn :: GameMonad m mv => Int -> m (ByGame a) -> m [a]
 firstn n = liftM (reverse . take n . reverse . asList)
 
-prev :: GameExec m (ByGame a) -> GameExec m a
+prev :: GameMonad m mv => m (ByGame a) -> m a
 prev = liftM (head . asList)
 
-prevn :: Int -> GameExec m (ByGame a) -> GameExec m [a]
+prevn :: GameMonad m mv => Int -> m (ByGame a) -> m [a]
 prevn n = liftM (take n . asList)
 
-gamen :: Int -> GameExec m (ByGame a) -> GameExec m a
+gamen :: GameMonad m mv => Int -> m (ByGame a) -> m a
 gamen i x = do ByGame as <- x
                n <- numGames
                return $ as !! (n-i)
