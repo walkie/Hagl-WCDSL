@@ -32,6 +32,11 @@ stately = stateful "Stately Alternator" Cooperate $
   do m <- get
      put $ if m == Cooperate then Defect else Cooperate
      return m
+
+mod3 = stateful "Mod3 Cooperator" 0 $
+  do i <- get
+     put (i+1)
+     return $ if i `mod` 3 == 0 then Cooperate else Defect
      
 -- Suspicious Tit-for-Tat (like Tit-for-Tat but defect on first move)
 suspicious = player "Suspicious Tit-for-Tat" $ 
