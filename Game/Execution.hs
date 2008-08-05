@@ -73,7 +73,8 @@ data ExecM mv m a = Monad m => ExecM { unG :: StateT (ExecState mv) m a }
 data StratM mv s m a = Monad m => StratM { unS :: StateT s m a }
 
 type GameExec mv = ExecM mv IO
-type Strategy mv s = StratM mv s (GameExec mv) mv
+type StratExec mv s = StratM mv s (GameExec mv)
+type Strategy mv s = StratExec mv s mv
 
 -- ExecM instances
 instance Monad m => Monad (ExecM mv m) where

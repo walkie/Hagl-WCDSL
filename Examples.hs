@@ -98,12 +98,6 @@ frequency = player "Huckleberry" $
                     if x == p then Scissors
                               else Rock
 
-{-
-statelyTitForTat i = Player "Oregon" $ 
-  stateful i 
-  stateful i (\m -> his (prev move) >>= (\m' -> (m, return m)))
--}
-
 --------------------------
 -- Cuban Missile Crisis --
 --------------------------
@@ -145,29 +139,49 @@ roll n = runGame die [player "Total" $ return ()] (times n >> printScore)
 
 data Square = X | O | Empty deriving (Eq, Show)
 type Board = [Square]
-type Move = (Int, Square)
+type Move = Int
+
+mark 1 = X
+mark 2 = O
 
 empty :: Board -> [Int]
 empty = elemIndices Empty
 
-who :: Board -> Int
-who b = if odd (length (empty b)) then 1 else 2
+end :: Board -> Int -> Bool
+end b p = win b p || null (empty b)
 
-avail :: Board -> [Move]
-avail b = if pay b /= [0,0] then []
-          else [(i, [X,O] !! (who b - 1)) | i <- empty b]
+avail :: Board -> Int -> [Move]
+avail b _ = empty b
 
-exec :: Board -> Move -> Board
-exec b (i, m) = take i b ++ m : drop (i+1) b
+exec :: Board -> Int -> Move -> Board
+exec b p m = take m b ++ mark p : drop (m+1) b
 
-pay :: Board -> [Float]
-pay b | win X b = [1,-1]
-      | win O b = [-1,1]
-      | otherwise = [0,0]
-  where win s b = 
-          let h = chunk 3 b
+pay :: Board -> Int -> [Float]
+pay b p | win b p = winner p 2
+        | otherwise = tie 2
+
+win :: Board -> Int -> Bool
+win b p = let h = chunk 3 b
               v = transpose h
               d = map (map (b !!)) [[0,4,8],[2,4,6]]
-          in or $ map (and . map (s ==)) (h ++ v ++ d)
+          in or $ map (and . map (mark p ==)) (h ++ v ++ d)
 
-ticTacToe = stateGame 2 who avail exec pay (take 9 (repeat Empty))
+ticTacToe = takeTurns 2 end avail exec pay (replicate 9 Empty)
+
+-- A Minimax Player
+minimaxi = player "Minimaxi" minimax
+
+--------------------
+-- The Match Game --   -- Try to force your opponent to take the last match.
+--------------------
+
+-- Create a new match game:
+--   * Number of start matches.
+--   * List of moves (# of matches to take).
+--   * Number of players.
+-- e.g. matches 15 [1,2,3] 2 -- 15 matches, can take 1-3 each turn, 2 players
+matches n ms np = takeTurns 2 end moves exec pay n
+  where end n _ = n <= 0
+        moves n _ = filter (\m -> n-m >= 0) ms
+        exec n _ m = n-m
+        pay _ p = loser (mod (p-2) np + 1) np

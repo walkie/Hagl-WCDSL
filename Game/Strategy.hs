@@ -64,7 +64,6 @@ minimax = myIndex >>= \me -> location >>= \loc ->
              in if isMe p then alpha' else beta'
       val _ _ (Payoff vs) = vs !! me
   in case loc of
-       Imperfect ns -> undefined
        Perfect n -> 
          let vals = map (val (-infinity) infinity) (children n)
          in return $ availMoves n !! maxIndex vals

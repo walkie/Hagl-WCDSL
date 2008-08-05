@@ -66,7 +66,7 @@ zerosum ms vs = matrix ms [[v, -v] | v <- vs]
 -- Extensive Form Definition --
 -------------------------------
 
--- Build a game from a tree.
+-- Build a game from a tree. Assumes a finite game tree.
 extensive :: GameTree m -> Game m
 extensive t = let p (Decision i _) = i
                   p _ = 0
@@ -77,24 +77,56 @@ extensive t = let p (Decision i _) = i
 -- State-Driven Definition --
 -----------------------------
 
-{- Args:
+{- Build a state-based game.
+ - Args:
      * Number of players.
      * Whose turn is it?
-     * What are the available moves? If empty, check payoff.
+     * Is the game over?
+     * What are the available moves?
      * Execute a move and return the new state.
-     * What is the payoff for this state? Undefined if there are available moves.
+     * What is the payoff for this (final) state?
      * Initial state. -}
-stateGame :: Int -> (d -> Int) -> (d -> [m]) -> (d -> m -> d) -> (d -> [Float]) -> d -> Game m
-stateGame np who moves exec pay init = 
-    let end = null . moves
-        tree d = if end d 
-          then Payoff (pay d)
-          else Decision (who d) $ zip (moves d) $ map (tree . exec d) (moves d)
-    in Game np Perfect (tree init)
+stateGame :: Int -> (s -> Int) -> (s -> Int -> Bool) -> (s -> Int -> [m]) -> 
+             (s -> Int -> m -> s) -> (s -> Int -> [Float]) -> s -> Game m
+stateGame np who end moves exec pay init = Game np Perfect (tree init)
+  where tree s =
+          let p = who s
+              ms = moves s p
+          in if end s p
+                then Payoff (pay s p)
+                else Decision p $ zip ms $ map (tree . exec s p) ms
+
+{- Build a state-based game where the players take turns. Player 1 goes first.
+ - Args:
+     * Number of players.
+     * Is the game over?
+     * What are the available moves?
+     * Execute a move and return the new state.
+     * What is the payoff for this (final) state?
+     * Initial state. -}
+takeTurns :: Int -> (s -> Int -> Bool) -> (s -> Int -> [m]) -> 
+             (s -> Int -> m -> s) -> (s -> Int -> [Float]) -> s -> Game m
+takeTurns np end moves exec pay init =
+    let exec' (s,_) p m = (exec s p m, (mod p np) + 1)
+        lft f (s,_) p = f s p
+    in stateGame np snd (lft end) (lft moves) exec' (lft pay) (init,1)
 
 ----------------------------
 -- Game Tree Construction --
 ----------------------------
+
+-- Construct a payoff where player w wins (1) and all other players,
+-- out of np, lose (-1).
+winner :: Int -> Int -> [Float]
+winner w np = replicate (w-1) (-1) ++ 1 : replicate (np - w) (-1)
+
+-- Construct a payoff where player w loses (-1) and all other players,
+-- out of np, win (1).
+loser :: Int -> Int -> [Float]
+loser l np = replicate (l-1) 1 ++ (-1) : replicate (np - l) 1
+
+tie :: Int -> [Float]
+tie np = replicate np 0
 
 -- Construct a decision node with only one option.
 decision :: Int -> (m, GameTree m) -> GameTree m

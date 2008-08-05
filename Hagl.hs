@@ -1,15 +1,15 @@
 module Hagl (
   -- Game.Definition
   Game(..), GameTree(..), InfoGroup(..),
-  normal, matrix, zerosum, extensive, stateGame,
-  decision, chance, (<+>), (<|>),
+  normal, matrix, zerosum, extensive, stateGame, takeTurns,
+  winner, loser, tie, decision, chance, (<+>), (<|>),
   availMoves, asTree,
   children, bfs, dfs,
   -- Game.Execution
   History, Transcript, Summary, Event,
   ByGame(..), ByPlayer(..), asList, asList2,
   PlayerName, Player, playerName, player, stateful,
-  GameExec, Strategy, GameMonad,
+  GameExec, StratExec, Strategy, GameMonad,
   game, players, location, transcript, history, numGames,
   -- Game.Execution.Run
   evalGame, runGame, step, once, times,
