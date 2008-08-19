@@ -45,20 +45,20 @@ instance (Show m) => Show (InfoGroup m) where
 ----------------------------
 
 -- Construct a game from a Normal-Form definition
-normal :: Int -> [m] -> [[Float]] -> Game m
-normal np ms vs =
-    let nodes n = if n > np
-          then [Payoff v | v <- vs]
-          else [Decision n (zip ms ns) | ns <- chunk (length ms) (nodes (n+1))]
-        group (Decision n _) = nodes n
-        group t = [t]
-    in Game np (Imperfect . group) (head $ nodes 1)
+normal :: Int -> [[m]] -> [[Float]] -> Game m
+normal np mss vs = Game np group (head (level 1))
+  where level n | n > np = [Payoff v | v <- vs]
+                | otherwise = let ms = mss !! (n-1) 
+                                  bs = chunk (length ms) (level (n+1)) 
+                              in map (Decision n . zip ms) bs
+        group (Decision n _) = Imperfect (level n)
+        group t = Perfect t
 
--- Construct a two-player Normal-Form game.
+-- Construct a two-player Normal-Form game, where each player has the same moves.
 matrix :: [m] -> [[Float]] -> Game m
-matrix = normal 2
+matrix ms = normal 2 [ms,ms]
 
--- Construct a two-player Zero-Sum game.
+-- Construct a two-player Zero-Sum game, where each player has the same moves.
 zerosum :: [m] -> [Float] -> Game m
 zerosum ms vs = matrix ms [[v, -v] | v <- vs]
 
@@ -68,10 +68,7 @@ zerosum ms vs = matrix ms [[v, -v] | v <- vs]
 
 -- Build a game from a tree. Assumes a finite game tree.
 extensive :: GameTree m -> Game m
-extensive t = let p (Decision i _) = i
-                  p _ = 0
-                  np = foldl1 max $ map p (bfs t)
-              in Game np Perfect t
+extensive t = Game (maxPlayer t) Perfect t
 
 -----------------------------
 -- State-Driven Definition --
@@ -86,15 +83,12 @@ extensive t = let p (Decision i _) = i
      * Execute a move and return the new state.
      * What is the payoff for this (final) state?
      * Initial state. -}
-stateGame :: Int -> (s -> Int) -> (s -> Int -> Bool) -> (s -> Int -> [m]) -> 
+stateGame :: Int -> (s -> Int) -> (s -> Int -> Bool) -> (s -> Int -> [m]) ->
              (s -> Int -> m -> s) -> (s -> Int -> [Float]) -> s -> Game m
 stateGame np who end moves exec pay init = Game np Perfect (tree init)
-  where tree s =
-          let p = who s
-              ms = moves s p
-          in if end s p
-                then Payoff (pay s p)
-                else Decision p $ zip ms $ map (tree . exec s p) ms
+  where tree s | end s p = Payoff (pay s p)
+               | otherwise = Decision p [(m, tree (exec s p m)) | m <- moves s p]
+          where p = who s
 
 {- Build a state-based game where the players take turns. Player 1 goes first.
  - Args:
@@ -107,9 +101,9 @@ stateGame np who end moves exec pay init = Game np Perfect (tree init)
 takeTurns :: Int -> (s -> Int -> Bool) -> (s -> Int -> [m]) -> 
              (s -> Int -> m -> s) -> (s -> Int -> [Float]) -> s -> Game m
 takeTurns np end moves exec pay init =
-    let exec' (s,_) p m = (exec s p m, (mod p np) + 1)
+    stateGame np snd (lft end) (lft moves) exec' (lft pay) (init, 1)
+  where exec' (s,_) p m = (exec s p m, (mod p np) + 1)
         lft f (s,_) p = f s p
-    in stateGame np snd (lft end) (lft moves) exec' (lft pay) (init,1)
 
 ----------------------------
 -- Game Tree Construction --
@@ -129,15 +123,11 @@ tie :: Int -> [Float]
 tie np = replicate np 0
 
 -- Construct a decision node with only one option.
-decision :: Int -> (m, GameTree m) -> GameTree m
-decision i m = Decision i [m]
-
--- Construct a chance node with only one option.
-chance :: (Int, GameTree m) -> GameTree m
-chance c = Chance [c]
+player :: Int -> (m, GameTree m) -> GameTree m
+player i m = Decision i [m]
 
 -- Combines two game trees.
-(<+>) :: (Eq m) => GameTree m -> GameTree m -> GameTree m
+(<+>) :: GameTree m -> GameTree m -> GameTree m
 Payoff as <+> Payoff bs = Payoff (zipWith (+) as bs)
 Chance as <+> Chance bs = Chance (as ++ bs)
 Decision a as <+> Decision b bs | a == b = Decision a (as ++ bs)
@@ -149,6 +139,12 @@ Decision i ms <|> m = Decision i (m:ms)
 -------------------------
 -- Game Tree Traversal --
 -------------------------
+
+-- Returns the highest number player from this finite game tree.
+maxPlayer :: GameTree m -> Int
+maxPlayer t = foldl1 max $ map p (dfs t)
+  where p (Decision i _) = i
+        p _ = 0
 
 -- Return the moves that are available from this node.
 availMoves :: GameTree m -> [m]

@@ -2,13 +2,13 @@ module Hagl (
   -- Game.Definition
   Game(..), GameTree(..), InfoGroup(..),
   normal, matrix, zerosum, extensive, stateGame, takeTurns,
-  winner, loser, tie, decision, chance, (<+>), (<|>),
-  availMoves, asTree,
+  winner, loser, tie, player, (<+>), (<|>),
+  maxPlayer, availMoves, asTree,
   children, bfs, dfs,
   -- Game.Execution
   History, Transcript, Summary, Event,
   ByGame(..), ByPlayer(..), asList, asList2,
-  PlayerName, Player, playerName, player, stateful,
+  PlayerName, Player, playerName, plays, stateful,
   GameExec, StratExec, Strategy, GameMonad,
   game, players, location, transcript, history, numGames,
   -- Game.Execution.Run
@@ -20,8 +20,8 @@ module Hagl (
   -- Game.Execution.Tournament
   runGames, tournament, fullRoundRobin, roundRobin,
   -- Game.Strategy
-  pure, random, randomFrom, mixed, periodic, minimax,
-  initially, next, finally, initiallyThen,
+  pure, randomly, randomlyFrom, mixed, periodic, minimax,
+  atFirst, next, finally, atFirstThen, initiallyThen,
   isFirstGame, transcripts, summaries, moves, move, payoff, score,
   each, myIndex, my, his, her, our, their, playern,
   every, first, firstn, prev, prevn, gamen,

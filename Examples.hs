@@ -16,17 +16,16 @@ data PD = Cooperate | Defect deriving (Show, Eq)
 pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 
 -- Some simple players.
-fink = player "Fink" (pure Defect)
-mum = player "Mum" (pure Cooperate)
-alt = player "Alternator" (periodic [Cooperate, Defect])
-dc = player "(DC)*" (periodic [Cooperate, Defect])
-ccd = player "(CCD)*" (periodic [Cooperate, Cooperate, Defect])
-randy = player "Randy" random
-rr = player "Russian Roulette" (mixed [(5, Cooperate), (1, Defect)])
+fink = "Fink" `plays` pure Defect
+mum = "Mum" `plays` pure Cooperate
+alt = "Alternator" `plays` periodic [Cooperate, Defect]
+dc = "(DC)*" `plays` periodic [Cooperate, Defect]
+ccd = "(CCD)*" `plays` periodic [Cooperate, Cooperate, Defect]
+randy = "Randy" `plays` randomly
+rr = "Russian Roulette" `plays` mixed [(5, Cooperate), (1, Defect)]
 
 -- The famous Tit-for-Tat.
-titForTat = player "Tit-for-Tat" $
-    return Cooperate `initiallyThen` his (prev move)
+titForTat = "Tit for Tat" `plays` (Cooperate `initiallyThen` his (prev move))
 
 stately = stateful "Stately Alternator" Cooperate $
   do m <- get
@@ -39,34 +38,33 @@ mod3 = stateful "Mod3 Cooperator" 0 $
      return $ if i `mod` 3 == 0 then Cooperate else Defect
      
 -- Suspicious Tit-for-Tat (like Tit-for-Tat but defect on first move)
-suspicious = player "Suspicious Tit-for-Tat" $ 
-    return Defect `initiallyThen` his (prev move)
+suspicious = "Suspicious Tit-for-Tat" `plays` (Defect `initiallyThen` his (prev move))
 
 -- Tit-for-Tat that only defects after two defects in a row.
-titForTwoTats = player "Tit-for-Two-Tats" $
+titForTwoTats = "Tit-for-Two-Tats" `plays`
     do ms <- his `each` prevn 2 move
        return $ if ms == [Defect, Defect] then Defect else Cooperate
 
 -- The Grim Trigger: Cooperates until opponent defects, then defects forever.
-grim = player "Grim Trigger" $
+grim = "Grim Trigger" `plays`
     do ms <- his `each` every move
        return $ if Defect `elem` ms then Defect else Cooperate
 
 -- If last move resulted in a "big" payoff, do it again, otherwise switch.
-pavlov = player "Pavlov" $
-    random `initiallyThen`
-    do p <- my (prev payoff)
-       m <- my (prev move)
-       return $ if p > 1 then m else
-         if m == Cooperate then Defect else Cooperate
+pavlov = "Pavlov" `plays`
+    (randomly `atFirstThen`
+     do p <- my (prev payoff)
+        m <- my (prev move)
+        return $ if p > 1 then m else
+          if m == Cooperate then Defect else Cooperate)
 
--- Made-up strategy: Pick randomly until we have a lead, then
+-- Made-up strategy: Pick randomlyly until we have a lead, then
 -- preserve it by repeatedly choosing Defect.
-preserver = player "Preserver" $
-    random `initiallyThen`
-    do me <- my score
-       he <- his score
-       if me > he then return Defect else random
+preserver = "Preserver" `plays`
+    (randomly `atFirstThen`
+     do me <- my score
+        he <- his score
+        if me > he then return Defect else randomly)
 
 -- Running from GHCi:
 -- > runGame pd [titForTat, pavlov] (times 10 >> printTranscript >> printScores)
@@ -83,12 +81,12 @@ rps = zerosum [Rock .. Scissors] [0,-1, 1,
                                  -1, 1, 0]
 
 -- Some simple players
-rocky = player "Stalone" $ pure Rock
-rotate = player "RPS" $ periodic [Rock, Paper, Scissors]
+rocky = "Stalone" `plays` pure Rock
+rotate = "RPS" `plays` periodic [Rock, Paper, Scissors]
 -- can reuse randy from above!
 
 -- Play the move that will beat the move the opponent has played most.
-frequency = player "Huckleberry" $
+frequency = "Huckleberry" `plays`
     do ms <- his `each` every move
        let r = length $ filter (Rock ==) ms
            p = length $ filter (Paper ==) ms
@@ -102,14 +100,29 @@ frequency = player "Huckleberry" $
 -- Cuban Missile Crisis --
 --------------------------
 
-ussr = decision 1
-usa  = decision 2
+crisis = extensive start
+  where ussr = player 1
+        usa  = player 2
+        nuclearWar    = Payoff [-100,-100]
+        nukesInCuba   = Payoff [   1,  -1]
+        nukesInTurkey = Payoff [  -1,   1]
+        usaLooksGood  = Payoff [   0,   1]
+        start = ussr ("Send Missiles to Cuba", usaResponse) 
+                 <|> ("Do Nothing", nukesInTurkey)
+        usaResponse = usa ("Do Nothing", nukesInTurkey <+> nukesInCuba)
+                      <|> ("Blockade", ussrBlockadeCounter)
+                      <|> ("Air Strike", ussrStrikeCounter)
+        ussrBlockadeCounter = ussr ("Agree to Terms", usaLooksGood) 
+                               <|> ("Escalate", nuclearWar)
+        ussrStrikeCounter = ussr ("Pull Out", nukesInTurkey)
+                             <|> ("Escalate", nuclearWar)
 
-nuclearWar    = Payoff [-100,-100] :: GameTree String
-nukesInCuba   = Payoff [   1,  -1] :: GameTree String
-nukesInTurkey = Payoff [  -1,   1] :: GameTree String
-usaLooksGood  = Payoff [   0,   1] :: GameTree String
-ussrLooksGood = Payoff [   1,   0] :: GameTree String
+{-
+nuclearWar    = Payoff [-100,-100]
+nukesInCuba   = Payoff [   1,  -1]
+nukesInTurkey = Payoff [  -1,   1]
+usaLooksGood  = Payoff [   0,   1]
+ussrLooksGood = Payoff [   1,   0]
 
 start = ussr ("Send Missiles to Cuba", usaResponse) 
          <|> ("Do Nothing", nukesInTurkey)
@@ -125,13 +138,25 @@ ussrInvasionCounter = ussr ("Pull Out", nukesInTurkey <+> usaLooksGood)
                        <|> ("Escalate", nuclearWar)
 
 crisis = extensive start
+-}
 
+------------------------
+-- Two Person Auction --
+------------------------
+
+auction v = Game 2 Perfect $ bid 1 0
+  where bid p b = Decision p [(0, win (other p) b), (b+1, bid (other p) (b+1))]
+        other 1 = 2
+        other 2 = 1
+        win 1 b = Payoff [v - fromInteger b, 0]
+        win 2 b = Payoff [0, v - fromInteger b]
+        
 ------------------
 -- Dice Rolling --
 ------------------
 
 die = Game 1 Perfect $ Chance [(1, Payoff [a]) | a <- [1..6]]
-roll n = runGame die [player "Total" $ return ()] (times n >> printScore)
+roll n = runGame die ["Total" `plays` return ()] (times n >> printScore)
 
 -----------------
 -- Tic Tac Toe --
@@ -169,7 +194,7 @@ win b p = let h = chunk 3 b
 ticTacToe = takeTurns 2 end avail exec pay (replicate 9 Empty)
 
 -- A Minimax Player
-minimaxi = player "Minimaxi" minimax
+minimaxi = "Minimaxi" `plays` minimax
 
 --------------------
 -- The Match Game --   -- Try to force your opponent to take the last match.
@@ -185,3 +210,17 @@ matches n ms np = takeTurns 2 end moves exec pay n
         moves n _ = filter (\m -> n-m >= 0) ms
         exec n _ m = n-m
         pay _ p = loser (mod (p-2) np + 1) np
+
+matches' n = takeTurns 2 end moves exec pay n
+  where end n _ = n <= 0
+        moves n _ = [m | m <- [1..3], n-m >= 0]
+        exec n _ m = n-m
+        pay _ 1 = [-1, 1]
+        pay _ 2 = [ 1,-1]
+
+matches'' n = takeTurns 2 end moves exec pay n
+  where end n _ = n <= 0
+        moves n _ = [m | m <- [1..3], n-m >= 0]
+        exec n _ m = n-m
+        pay _ 1 = [-1, 1]
+        pay _ 2 = [ 1,-1]

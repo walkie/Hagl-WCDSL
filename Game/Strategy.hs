@@ -17,37 +17,44 @@ pure :: mv -> Strategy mv s
 pure = return
 
 -- Pick a move from the list of available moves randomly.
-random :: Eq mv => Strategy mv s
-random = do loc <- location
-            let ms = case loc of
-                       Perfect t -> availMoves t 
-                       Imperfect ts -> foldl1 intersect (map availMoves ts)
-             in randomFrom ms
+randomly :: Eq mv => Strategy mv s
+randomly = do loc <- location
+              let ms = case loc of
+                         Perfect t -> availMoves t 
+                         Imperfect ts -> foldl1 intersect (map availMoves ts)
+               in randomlyFrom ms
 
 -- Pick a move randomly from a list.
-randomFrom :: [mv] -> Strategy mv s
-randomFrom as = liftM (as !!) (randomIndex as)
+randomlyFrom :: [mv] -> Strategy mv s
+randomlyFrom as = liftM (as !!) (randomIndex as)
 
 -- Construct a mixed strategy. Play moves based on a distribution.
 mixed :: [(Int, mv)] -> Strategy mv s
-mixed = randomFrom . expandDist
+mixed = randomlyFrom . expandDist
 
 -- Perform some pattern of moves periodically.
 periodic :: [mv] -> Strategy mv s
 periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
 
-initially :: Strategy mv s -> [Strategy mv s] -> Strategy mv s
-initially s ss = numGames >>= \n -> (s:ss) !!! n
+-- Begin a list of strategies.
+atFirst :: Strategy mv s -> [Strategy mv s] -> Strategy mv s
+atFirst s ss = numGames >>= \n -> (s:ss) !!! n
 
+-- Next in a list of strategies.
 next :: Strategy mv s -> [Strategy mv s] -> [Strategy mv s]
 next = (:)
 
+-- End a list of strategies.
 finally :: Strategy mv s -> [Strategy mv s]
 finally = (:[])
 
--- Perform some strategy on the first move, then another strategy thereafter.
-initiallyThen :: Strategy mv s -> Strategy mv s -> Strategy mv s
-initiallyThen a b = initially a $ finally b
+-- Play a strategy in the first game, then another strategy thereafter.
+atFirstThen :: Strategy mv s -> Strategy mv s -> Strategy mv s
+atFirstThen a b = atFirst a (finally b)
+
+-- Play a move in the first game, then another strategy thereafter.
+initiallyThen :: mv -> Strategy mv s -> Strategy mv s
+initiallyThen a b = atFirst (return a) (finally b)
 
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
 -- perfect information and no Chance nodes.

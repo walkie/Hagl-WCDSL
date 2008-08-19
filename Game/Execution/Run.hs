@@ -17,9 +17,9 @@ evalGame g ps (ExecM f) = evalStateT f $ initState g ps
 runGame :: Game m -> [Player m] -> GameExec m a -> IO (ExecState m)
 runGame g ps (ExecM f) = execStateT f $ initState g ps
 
-runStrategy :: PlayerStrategy mv -> GameExec mv (mv, PlayerStrategy mv)
-runStrategy (PlayerStrategy m s) = do (mv, s') <- runStateT (unS m) s
-                                      return (mv, PlayerStrategy m s')
+runStrategy :: StrategyState mv -> GameExec mv (mv, StrategyState mv)
+runStrategy (StrategyState m s) = do (mv, s') <- runStateT (unS m) s
+                                     return (mv, StrategyState m s')
 
 step :: (Eq m) => GameExec m ()
 step = get >>= \state ->

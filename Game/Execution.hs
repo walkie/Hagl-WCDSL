@@ -47,16 +47,16 @@ type PlayerName = String
 data Player mv =
   Player {
     playerName     :: PlayerName,
-    playerStrategy :: PlayerStrategy mv
+    playerStrategy :: StrategyState mv
   }
 
-data PlayerStrategy mv = forall s. PlayerStrategy (Strategy mv s) s
+data StrategyState mv = forall s. StrategyState (Strategy mv s) s
 
-player :: PlayerName -> Strategy mv () -> Player mv
-player n m = Player n (PlayerStrategy m ())
+plays :: PlayerName -> Strategy mv () -> Player mv
+plays n m = Player n (StrategyState m ())
 
 stateful :: PlayerName -> s -> Strategy mv s -> Player mv
-stateful n s m = Player n (PlayerStrategy m s)
+stateful n s m = Player n (StrategyState m s)
 
 instance Show (Player mv) where
   show = playerName
