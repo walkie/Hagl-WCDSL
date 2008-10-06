@@ -23,7 +23,7 @@ type History mv = ByGame (Transcript mv, Summary mv)
 type Transcript mv = [Event mv]
 type Summary mv = (ByPlayer [mv], ByPlayer Float)
 
-data Event mv = DecisionEvent Int mv
+data Event mv = DecisionEvent PlayerIx mv
               | ChanceEvent Int
               | PayoffEvent [Float]
               deriving (Eq, Show)
@@ -42,28 +42,24 @@ asList2 :: (DList f, DList g) => f (g a) -> [[a]]
 asList2 = map asList . asList
 
 -- Player
-type PlayerName = String
+type Name = String
 
-data Player mv =
+data Player mv = forall s.
   Player {
-    playerName     :: PlayerName,
-    playerStrategy :: StrategyState mv
+    name     :: Name,
+    state    :: s,
+    strategy :: Strategy mv s
   }
 
-data StrategyState mv = forall s. StrategyState (Strategy mv s) s
-
-plays :: PlayerName -> Strategy mv () -> Player mv
-plays n m = Player n (StrategyState m ())
-
-stateful :: PlayerName -> s -> Strategy mv s -> Player mv
-stateful n s m = Player n (StrategyState m s)
+plays :: Name -> Strategy mv () -> Player mv
+plays n s = Player n () s
 
 instance Show (Player mv) where
-  show = playerName
+  show = name
 instance Eq (Player mv) where
-  a == b = playerName a == playerName b
+  a == b = name a == name b
 instance Ord (Player mv) where
-  compare a b = compare (playerName a) (playerName b)
+  compare a b = compare (name a) (name b)
 
 ----------------------------------------
 -- Game Execution and Strategy Monads --
@@ -106,33 +102,36 @@ instance MonadTrans (StratM mv s) where
 instance MonadIO m => MonadIO (StratM mv s m) where
   liftIO = lift . liftIO
 
+update :: MonadState s m => (s -> s) -> m s
+update f = modify f >> get
+
 -------------------------------
 -- Execution State Shortcuts --
 -------------------------------
 
 class Monad m => GameMonad m mv | m -> mv where
-  game :: m (Game mv)
-  players :: m [Player mv]
-  location :: m (InfoGroup mv)
-  _exactLoc :: m (GameTree mv)
+  game       :: m (Game mv)
+  players    :: m [Player mv]
+  location   :: m (InfoGroup mv)
+  _exactLoc  :: m (GameTree mv)
   transcript :: m (Transcript mv)
-  history :: m (History mv)
-  numGames :: m Int
+  history    :: m (History mv)
+  numGames   :: m Int
 
 instance Monad m => GameMonad (ExecM mv m) mv where
-  game = liftM _game get
-  players = liftM _players get
-  location = get >>= \s -> return $ info (_game s) (_location s)
-  _exactLoc = liftM _location get
+  game       = liftM _game get
+  players    = liftM _players get
+  location   = get >>= \s -> return $ info (_game s) (_location s)
+  _exactLoc  = liftM _location get
   transcript = liftM _transcript get
-  history = liftM _history get
-  numGames = liftM (length . asList) history
+  history    = liftM _history get
+  numGames   = liftM (length . asList) history
 
 instance (GameMonad m mv, Monad m) => GameMonad (StratM mv s m) mv where
-  game = lift game
-  players = lift players
-  location = lift location
-  _exactLoc = lift _exactLoc
+  game       = lift game
+  players    = lift players
+  location   = lift location
+  _exactLoc  = lift _exactLoc
   transcript = lift transcript
-  history = lift history
-  numGames = lift numGames
+  history    = lift history
+  numGames   = lift numGames

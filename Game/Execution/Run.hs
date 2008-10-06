@@ -17,17 +17,17 @@ evalGame g ps (ExecM f) = evalStateT f $ initState g ps
 runGame :: Game m -> [Player m] -> GameExec m a -> IO (ExecState m)
 runGame g ps (ExecM f) = execStateT f $ initState g ps
 
-runStrategy :: StrategyState mv -> GameExec mv (mv, StrategyState mv)
-runStrategy (StrategyState m s) = do (mv, s') <- runStateT (unS m) s
-                                     return (mv, StrategyState m s')
+runStrategy :: Player mv -> GameExec mv (mv, Player mv)
+runStrategy (Player n s m) = do (mv, s') <- runStateT (unS m) s
+                                return (mv, Player n s' m)
 
 step :: (Eq m) => GameExec m ()
 step = get >>= \state ->
     let t = _location state in case t of
       Decision t next ->
         let (ph, (p:pt)) = splitAt (t-1) $ _players state 
-        in do (m, s) <- runStrategy $ playerStrategy p
-              put state { _players = ph ++ p { playerStrategy = s } : pt,
+        in do (m, p') <- runStrategy p
+              put state { _players = ph ++ p' : pt,
                           _location = fromJust $ lookup m next,
                           _transcript = DecisionEvent t m : _transcript state }
       Chance dist ->

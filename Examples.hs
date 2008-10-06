@@ -11,7 +11,7 @@ import Prelude hiding (print)
 ------------------------
 
 -- Game definition
-data PD = Cooperate | Defect deriving (Show, Eq)
+data Dilemma = Cooperate | Defect deriving (Show, Eq)
 
 pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
 
@@ -27,12 +27,12 @@ rr = "Russian Roulette" `plays` mixed [(5, Cooperate), (1, Defect)]
 -- The famous Tit-for-Tat.
 titForTat = "Tit for Tat" `plays` (Cooperate `initiallyThen` his (prev move))
 
-stately = stateful "Stately Alternator" Cooperate $
+stately = Player "Stately Alternator" Cooperate $
   do m <- get
      put $ if m == Cooperate then Defect else Cooperate
      return m
 
-mod3 = stateful "Mod3 Cooperator" 0 $
+mod3 = Player "Mod3 Cooperator" 0 $
   do i <- get
      put (i+1)
      return $ if i `mod` 3 == 0 then Cooperate else Defect
@@ -50,6 +50,19 @@ grim = "Grim Trigger" `plays`
     do ms <- his `each` every move
        return $ if Defect `elem` ms then Defect else Cooperate
 
+{-
+statelyGrim = Player "Grim Trigger" False $ get >>= trig
+  where trig True = return Defect
+        trig False = do m <- his (prev move)
+                        if m == Cooperate then return Cooperate
+                                          else put True >> return Defect
+-}
+
+statelyGrim = Player "Grim Trigger" False $ Cooperate `initiallyThen`
+  do m <- his (prev move)
+     triggered <- update (|| m == Defect)
+     return $ if triggered then Defect else Cooperate
+
 -- If last move resulted in a "big" payoff, do it again, otherwise switch.
 pavlov = "Pavlov" `plays`
     (randomly `atFirstThen`
@@ -65,6 +78,7 @@ preserver = "Preserver" `plays`
      do me <- my score
         he <- his score
         if me > he then return Defect else randomly)
+
 
 -- Running from GHCi:
 -- > runGame pd [titForTat, pavlov] (times 10 >> printTranscript >> printScores)
@@ -172,20 +186,20 @@ mark 2 = O
 empty :: Board -> [Int]
 empty = elemIndices Empty
 
-end :: Board -> Int -> Bool
+end :: Board -> PlayerIx -> Bool
 end b p = win b p || null (empty b)
 
-avail :: Board -> Int -> [Move]
+avail :: Board -> PlayerIx -> [Move]
 avail b _ = empty b
 
-exec :: Board -> Int -> Move -> Board
+exec :: Board -> PlayerIx -> Move -> Board
 exec b p m = take m b ++ mark p : drop (m+1) b
 
-pay :: Board -> Int -> [Float]
-pay b p | win b p = winner p 2
+pay :: Board -> PlayerIx -> [Float]
+pay b p | win b p = winner 2 p
         | otherwise = tie 2
 
-win :: Board -> Int -> Bool
+win :: Board -> PlayerIx -> Bool
 win b p = let h = chunk 3 b
               v = transpose h
               d = map (map (b !!)) [[0,4,8],[2,4,6]]
@@ -203,24 +217,9 @@ minimaxi = "Minimaxi" `plays` minimax
 -- Create a new match game:
 --   * Number of start matches.
 --   * List of moves (# of matches to take).
---   * Number of players.
--- e.g. matches 15 [1,2,3] 2 -- 15 matches, can take 1-3 each turn, 2 players
-matches n ms np = takeTurns 2 end moves exec pay n
+-- e.g. matches 15 [1,2,3] -- 15 matches, can take 1-3 each turn
+matches n ms = takeTurns 2 end moves exec pay n
   where end n _ = n <= 0
-        moves n _ = filter (\m -> n-m >= 0) ms
+        moves n _ = [m | m <- ms, n-m >= 0]
         exec n _ m = n-m
-        pay _ p = loser (mod (p-2) np + 1) np
-
-matches' n = takeTurns 2 end moves exec pay n
-  where end n _ = n <= 0
-        moves n _ = [m | m <- [1..3], n-m >= 0]
-        exec n _ m = n-m
-        pay _ 1 = [-1, 1]
-        pay _ 2 = [ 1,-1]
-
-matches'' n = takeTurns 2 end moves exec pay n
-  where end n _ = n <= 0
-        moves n _ = [m | m <- [1..3], n-m >= 0]
-        exec n _ m = n-m
-        pay _ 1 = [-1, 1]
-        pay _ 2 = [ 1,-1]
+        pay _ = winner 2

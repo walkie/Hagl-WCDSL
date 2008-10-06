@@ -59,7 +59,7 @@ initiallyThen a b = atFirst (return a) (finally b)
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
 -- perfect information and no Chance nodes.
 minimax :: Strategy mv s
-minimax = myIndex >>= \me -> location >>= \loc ->
+minimax = myIx >>= \me -> location >>= \loc ->
   let isMe = (me + 1 ==)
       val alpha beta n@(Decision p _)
          | alpha >= beta = if isMe p then alpha else beta
@@ -121,17 +121,17 @@ each f xs = (sequence . map f . map return) =<< xs
 -- ByPlayer Selection --
 
 -- The index of the current player.
-myIndex :: GameMonad m mv => m Int
-myIndex = do Decision p _ <- _exactLoc
-             return (p-1)
+myIx :: GameMonad m mv => m PlayerIx
+myIx = do Decision p _ <- _exactLoc
+          return (p-1)
 
 my :: GameMonad m mv => m (ByPlayer a) -> m a
-my x = liftM2 (!!) (liftM asList x) myIndex
+my x = liftM2 (!!) (liftM asList x) myIx
 
 -- Selects the next player's x.
 his :: GameMonad m mv => m (ByPlayer a) -> m a
 his x = do ByPlayer as <- x
-           i <- myIndex
+           i <- myIx
            g <- game
            return $ as !! ((i+1) `mod` numPlayers g)
 
@@ -143,10 +143,10 @@ our = liftM asList
 
 their :: GameMonad m mv => m (ByPlayer a) -> m [a]
 their x = do ByPlayer as <- x
-             i <- myIndex
+             i <- myIx
              return $ (take i as) ++ (drop (i+1) as)
 
-playern :: GameMonad m mv => Int -> m (ByPlayer a) -> m a
+playern :: GameMonad m mv => PlayerIx -> m (ByPlayer a) -> m a
 playern i x = do ByPlayer as <- x
                  return $ as !! (i-1)
 
