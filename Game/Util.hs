@@ -13,8 +13,10 @@ branch ((i, _):r) n | n < i = 1
 -- element if n is greater than the length of the list.  Works with 
 -- infinite lists.
 (!!!) :: [a] -> Int -> a
-l !!! n | n < length l = l !! n
-        | otherwise    = last l
+_     !!! n | n < 0 = error "Negative index passed to (!!!)."
+(h:_) !!! 0 = h
+[a]   !!! _ = a
+(_:t) !!! n = t !!! (n-1)
 
 -- Break a list into n equal-sized chunks.
 chunk :: Int -> [a] -> [[a]]

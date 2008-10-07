@@ -115,12 +115,12 @@ takeTurns np end moves exec pay init =
 -- Construct a payoff where player w wins (1) and all other players,
 -- out of np, lose (-1).
 winner :: Int -> PlayerIx -> [Float]
-winner np w = replicate (w-1) (-1) ++ 1 : replicate (np - w) (-1)
+winner np w = replicate (w-1) (-1) ++ (fromIntegral np - 1) : replicate (np - w) (-1)
 
 -- Construct a payoff where player w loses (-1) and all other players,
 -- out of np, win (1).
 loser :: Int -> PlayerIx -> [Float]
-loser np l = replicate (l-1) 1 ++ (-1) : replicate (np - l) 1
+loser np l = replicate (l-1) 1 ++ (1 - fromIntegral np) : replicate (np - l) 1
 
 tie :: Int -> [Float]
 tie np = replicate np 0

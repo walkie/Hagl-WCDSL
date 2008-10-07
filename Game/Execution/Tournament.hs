@@ -7,6 +7,8 @@ import Game.Execution
 import Game.Execution.Run
 import Game.Execution.Util
 import Game.Strategy
+import Game.Strategy.Accessor
+import Game.Strategy.Selector
 
 -- Run a game with each successive collection of players. Aggregate the scores
 -- of all Players (based on name) and print the final scores.

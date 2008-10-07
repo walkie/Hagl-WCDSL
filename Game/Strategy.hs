@@ -1,16 +1,22 @@
 module Game.Strategy where
 
-import Control.Monad.State
+import Control.Monad
 import Data.List
 import Data.Maybe
 import Game.Definition
 import Game.Execution
 import Game.Execution.Util
+import Game.Strategy.Accessor
+import Game.Strategy.Selector
 import Game.Util
 
 -----------------------
 -- Common Strategies --
 -----------------------
+
+-- Play a move.
+play :: mv -> Strategy mv s
+play = return
 
 -- Construct a pure strategy. Always play the same move.
 pure :: mv -> Strategy mv s
@@ -78,99 +84,6 @@ minimax = myIx >>= \me -> location >>= \loc ->
 infinity :: Float
 infinity = 1/0
 
---------------------------
--- History Manipulation --
---------------------------
-
--- True if this is the first iteration in this execution instance.
-isFirstGame :: GameMonad m mv => m Bool
-isFirstGame = liftM (null . asList) history
-
--- Transcript of each game.
-transcripts :: GameMonad m mv => m (ByGame (Transcript mv))
-transcripts = liftM (ByGame . fst . unzip . asList) history
-
--- Summary of each game.
-summaries :: GameMonad m mv => m (ByGame (Summary mv))
-summaries = liftM (ByGame . snd . unzip . asList) history
-
--- All moves made by each player in each game.
-moves :: GameMonad m mv => m (ByGame (ByPlayer [mv]))
-moves = liftM (ByGame . fst . unzip . asList) summaries
-
--- The last move by each player in each game.
-move :: GameMonad m mv => m (ByGame (ByPlayer mv))
-move = liftM (ByGame . map (ByPlayer . map head) . asList2) moves
-
--- The total payoff for each player for each game.
-payoff :: GameMonad m mv => m (ByGame (ByPlayer Float))
-payoff = liftM (ByGame . snd . unzip . asList) summaries
-
--- The current score of each player.
-score :: GameMonad m mv => m (ByPlayer Float)
-score = liftM (ByPlayer . map sum . transpose . asList2) payoff
-
--------------------------
--- Selection Functions --
--------------------------
-
--- Apply selection to each element of a list.
-each :: Monad m => (m a -> m b) -> m [a] -> m [b]
-each f xs = (sequence . map f . map return) =<< xs
-
--- ByPlayer Selection --
-
--- The index of the current player.
-myIx :: GameMonad m mv => m PlayerIx
-myIx = do Decision p _ <- _exactLoc
-          return (p-1)
-
-my :: GameMonad m mv => m (ByPlayer a) -> m a
-my x = liftM2 (!!) (liftM asList x) myIx
-
--- Selects the next player's x.
-his :: GameMonad m mv => m (ByPlayer a) -> m a
-his x = do ByPlayer as <- x
-           i <- myIx
-           g <- game
-           return $ as !! ((i+1) `mod` numPlayers g)
-
-her :: GameMonad m mv => m (ByPlayer a) -> m a
-her = his
-
-our :: GameMonad m mv => m (ByPlayer a) -> m [a]
-our = liftM asList
-
-their :: GameMonad m mv => m (ByPlayer a) -> m [a]
-their x = do ByPlayer as <- x
-             i <- myIx
-             return $ (take i as) ++ (drop (i+1) as)
-
-playern :: GameMonad m mv => PlayerIx -> m (ByPlayer a) -> m a
-playern i x = do ByPlayer as <- x
-                 return $ as !! (i-1)
-
--- ByGame Selection --
-
-every :: GameMonad m mv => m (ByGame a) -> m [a]
-every = liftM asList
-
-first :: GameMonad m mv => m (ByGame a) -> m a
-first = liftM (last . asList)
-
-firstn :: GameMonad m mv => Int -> m (ByGame a) -> m [a]
-firstn n = liftM (reverse . take n . reverse . asList)
-
-prev :: GameMonad m mv => m (ByGame a) -> m a
-prev = liftM (head . asList)
-
-prevn :: GameMonad m mv => Int -> m (ByGame a) -> m [a]
-prevn n = liftM (take n . asList)
-
-gamen :: GameMonad m mv => Int -> m (ByGame a) -> m a
-gamen i x = do ByGame as <- x
-               n <- numGames
-               return $ as !! (n-i)
 
 ---------------
 -- Utilities --

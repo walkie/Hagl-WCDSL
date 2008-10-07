@@ -51,6 +51,12 @@ grim = "Grim Trigger" `plays`
        return $ if Defect `elem` ms then Defect else Cooperate
 
 {-
+grim' = Player "Stately Grim Trigger" False
+    (do m <- his (prev move)
+        triggered <- get
+        put (triggered || m == Defect)
+        if triggered then play Defect else play Cooperate)
+
 statelyGrim = Player "Grim Trigger" False $ get >>= trig
   where trig True = return Defect
         trig False = do m <- his (prev move)
@@ -58,11 +64,13 @@ statelyGrim = Player "Grim Trigger" False $ get >>= trig
                                           else put True >> return Defect
 -}
 
-statelyGrim = Player "Grim Trigger" False $ Cooperate `initiallyThen`
+grim' = Player "Stately Grim" False $ 
+  Cooperate `initiallyThen`
   do m <- his (prev move)
      triggered <- update (|| m == Defect)
-     return $ if triggered then Defect else Cooperate
+     if triggered then play Defect else play Cooperate
 
+{-
 -- If last move resulted in a "big" payoff, do it again, otherwise switch.
 pavlov = "Pavlov" `plays`
     (randomly `atFirstThen`
@@ -70,6 +78,7 @@ pavlov = "Pavlov" `plays`
         m <- my (prev move)
         return $ if p > 1 then m else
           if m == Cooperate then Defect else Cooperate)
+-}
 
 -- Made-up strategy: Pick randomlyly until we have a lead, then
 -- preserve it by repeatedly choosing Defect.
@@ -79,6 +88,15 @@ preserver = "Preserver" `plays`
         he <- his score
         if me > he then return Defect else randomly)
 
+a -! f = (liftM2 f) a
+(!-) = ($)
+
+(?) :: Monad m => m Bool -> (m a, m a) -> m a
+mb ? (t,f) = mb >>= \b -> if b then t else f
+
+preserver2 = "Preserver" `plays`
+    (randomly `atFirstThen`
+      (my score -! (>) !- his score ? (return Defect, randomly)))
 
 -- Running from GHCi:
 -- > runGame pd [titForTat, pavlov] (times 10 >> printTranscript >> printScores)
@@ -98,6 +116,13 @@ rps = zerosum [Rock .. Scissors] [0,-1, 1,
 rocky = "Stalone" `plays` pure Rock
 rotate = "RPS" `plays` periodic [Rock, Paper, Scissors]
 -- can reuse randy from above!
+
+-- If last move resulted in a "big" payoff, do it again, otherwise switch.
+pavlov = "Pavlov" `plays`
+    (randomly `atFirstThen`
+     do p <- my (prev payoff)
+        m <- my (prev move)
+        if p > 0 then return m else randomly)
 
 -- Play the move that will beat the move the opponent has played most.
 frequency = "Huckleberry" `plays`
@@ -223,3 +248,16 @@ matches n ms = takeTurns 2 end moves exec pay n
         moves n _ = [m | m <- ms, n-m >= 0]
         exec n _ m = n-m
         pay _ = winner 2
+
+-- Problem: No way to get state from the strategy of a state game!!!
+
+matchman = "Match Man" `plays`
+    do n <- numMatches
+       g <- game
+       let ms = availMoves (tree g)
+        in maybe randomly play (find (\m -> gcd (n-m) 4 == 4) ms)
+
+numMatches = do (Perfect loc) <- location
+                return (count loc)
+  where count (Decision _ ((m,b):_)) = m + count b
+        count (Payoff _) = 0

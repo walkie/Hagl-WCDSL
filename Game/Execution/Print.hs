@@ -6,28 +6,30 @@ import Game.Definition
 import Game.Execution
 import Game.Execution.Util
 import Game.Strategy
+import Game.Strategy.Accessor
+import Game.Strategy.Selector
 
 ------------------------
 -- Printing Functions --
 ------------------------
 
-print :: (Show a) => GameExec m a -> GameExec m ()
+print :: (MonadIO m, Show a) => m a -> m ()
 print = (>>= liftIO . putStr . show)
 
-printLn :: (Show a) => GameExec m a -> GameExec m ()
+printLn :: (MonadIO m, Show a) => m a -> m ()
 printLn = (>>= liftIO . putStrLn . show)
 
-printStr :: String -> GameExec m ()
+printStr :: MonadIO m => String -> m ()
 printStr = liftIO . putStr
 
-printStrLn :: String -> GameExec m ()
+printStrLn :: MonadIO m => String -> m ()
 printStrLn = liftIO . putStrLn
 
-printTranscript :: (Show m) => GameExec m ()
+printTranscript :: (MonadIO m, GameMonad m mv, Show mv) => m ()
 printTranscript = do n <- numGames
                      sequence_ $ map printTranscriptOfGame [1..n]
 
-printTranscriptOfGame :: (Show m) => Int -> GameExec m ()
+printTranscriptOfGame :: (MonadIO m, GameMonad m mv, Show mv) => Int -> m ()
 printTranscriptOfGame n =
     do ByGame ts <- transcripts
        ps <- players
@@ -38,11 +40,11 @@ printTranscriptOfGame n =
            event (PayoffEvent vs) = "  Payoff: " ++ show vs
         in printStr $ unlines $ map event t
 
-printSummaries :: (Show m) => GameExec m ()
+printSummaries :: (MonadIO m, GameMonad m mv, Show mv) => m ()
 printSummaries = do n <- numGames
                     sequence_ $ map printSummaryOfGame [1..n]
 
-printSummaryOfGame :: (Show m) => Int -> GameExec m ()
+printSummaryOfGame :: (MonadIO m, GameMonad m mv, Show mv) => Int -> m ()
 printSummaryOfGame n = 
     do ByGame ss <- summaries
        ps <- players
@@ -51,7 +53,7 @@ printSummaryOfGame n =
         in do printStr $ unlines ["  "++show p++" moves: "++show (reverse ms) | (p,ms) <- zip ps mss]
               printStrLn $ "  Score: "++show vs
 
-printScore :: (Show m) => GameExec m ()
+printScore :: (MonadIO m, GameMonad m mv, Show mv) => m ()
 printScore = do s <- liftM2 scoreString players (our score)
                 printStrLn "Score:"
                 printStr =<< liftM2 scoreString players (our score)

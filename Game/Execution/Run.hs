@@ -12,10 +12,10 @@ import Game.Util
 --------------------
 
 evalGame :: Game m -> [Player m] -> GameExec m a -> IO a
-evalGame g ps (ExecM f) = evalStateT f $ initState g ps
+evalGame g ps (GameExec f) = evalStateT f $ initState g ps
 
 runGame :: Game m -> [Player m] -> GameExec m a -> IO (ExecState m)
-runGame g ps (ExecM f) = execStateT f $ initState g ps
+runGame g ps (GameExec f) = execStateT f $ initState g ps
 
 runStrategy :: Player mv -> GameExec mv (mv, Player mv)
 runStrategy (Player n s m) = do (mv, s') <- runStateT (unS m) s
