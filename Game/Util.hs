@@ -9,6 +9,13 @@ branch :: [(Int, a)] -> Int -> Int
 branch ((i, _):r) n | n < i = 1
                     | otherwise = 1 + branch r (n-i)
 
+allCombs :: [[a]] -> [[a]]
+allCombs (xs:xss) = [(y:ys) | y <- xs, ys <- allCombs xss]
+allCombs [] = [[]]
+
+allUnique :: (Ord a) => [[a]] -> [[a]]
+allUnique = nub . map sort . allCombs
+
 -- A list indexing function that returns the element at n, or the last
 -- element if n is greater than the length of the list.  Works with 
 -- infinite lists.

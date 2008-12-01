@@ -42,13 +42,6 @@ roundRobin g ps = runGames g (allUnique (replicate (numPlayers g) ps))
 -- Utility Functions --
 -----------------------
 
-allCombs :: [[a]] -> [[a]]
-allCombs (xs:xss) = [(y:ys) | y <- xs, ys <- allCombs xss]
-allCombs [] = [[]]
-
-allUnique :: (Ord a) => [[a]] -> [[a]]
-allUnique = nub . map sort . allCombs
-
 sortTogether :: (Ord a) => [a] -> [b] -> [(a, b)]
 sortTogether as bs = let f (a1,_) (a2,_) = compare a1 a2
                      in sortBy f $ zip as bs
