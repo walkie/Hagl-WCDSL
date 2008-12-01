@@ -3,28 +3,28 @@
 module Game.Execution where
 
 import Control.Monad.State
-import Game.Definition
 
 -----------
 -- Types --
 -----------
 
 -- Game Execution State
-data ExecState mv = ExecState {
-    _game       :: Game mv,       -- game definition
-    _players    :: [Player mv],   -- players active in game
-    _location   :: GameTree mv,   -- current node in game tree
-    _transcript :: Transcript mv, -- events so far this game (newest at head)
-    _history    :: History mv     -- a summary of each game
+data Exec g mv = Exec {
+    _initial  :: g,             -- initial game definition
+    _current  :: g,             -- current state of game
+    _players  :: [Player g mv], -- players active in game
+    _events   :: [Event mv],    -- events so far this game (newest at head)
+    _history  :: History mv     -- a summary of each game
 }
 
 -- History
-type History mv = ByGame (Transcript mv, Summary mv)
-type Transcript mv = [Event mv]
+type History mv = ByGame ([Event mv], Summary mv)
 type Summary mv = (ByPlayer [mv], ByPlayer Float)
 
+type PlayerIx = Int
+
 data Event mv = DecisionEvent PlayerIx mv
-              | ChanceEvent Int
+              | ChanceEvent mv
               | PayoffEvent [Float]
               deriving (Eq, Show)
 
@@ -44,54 +44,54 @@ asList2 = map asList . asList
 -- Player
 type Name = String
 
-data Player mv = forall s.
+data Player g mv = forall s.
   Player {
     name     :: Name,
     state    :: s,
-    strategy :: Strategy mv s
+    strategy :: Strategy g mv s
   }
 
-plays :: Name -> Strategy mv () -> Player mv
+plays :: Name -> Strategy g mv () -> Player g mv
 plays n s = Player n () s
 
-instance Show (Player mv) where
+instance Show (Player g mv) where
   show = name
-instance Eq (Player mv) where
+instance Eq (Player g mv) where
   a == b = name a == name b
-instance Ord (Player mv) where
+instance Ord (Player g mv) where
   compare a b = compare (name a) (name b)
 
 ----------------------------------------
 -- Game Execution and Strategy Monads --
 ----------------------------------------
 
-data GameExec mv a = GameExec { unG :: StateT (ExecState mv) IO a }
-data StratExec mv s a = StratExec { unS :: StateT s (GameExec mv) a }
-type Strategy mv s = StratExec mv s mv
+data ExecM    g mv a   = ExecM  { unG :: StateT (Exec g mv) IO a }
+data StratM   g mv s a = StratM { unS :: StateT s (ExecM g mv) a }
+type Strategy g mv s   = StratM g mv s mv
 
--- GameExec instances
-instance Monad (GameExec mv) where
-  return = GameExec . return
-  (GameExec x) >>= f = GameExec (x >>= unG . f)
+-- ExecM instances
+instance Monad (ExecM g mv) where
+  return = ExecM . return
+  (ExecM x) >>= f = ExecM (x >>= unG . f)
 
-instance MonadState (ExecState mv) (GameExec mv) where
-  get = GameExec get
-  put = GameExec . put
+instance MonadState (Exec g mv) (ExecM g mv) where
+  get = ExecM get
+  put = ExecM . put
 
-instance MonadIO (GameExec mv) where
-  liftIO = GameExec . liftIO
+instance MonadIO (ExecM g mv) where
+  liftIO = ExecM . liftIO
 
--- StratExec instances
-instance Monad (StratExec mv s) where
-  return = StratExec . return
-  (StratExec x) >>= f = StratExec (x >>= unS . f)
+-- StratM instances
+instance Monad (StratM g mv s) where
+  return = StratM . return
+  (StratM x) >>= f = StratM (x >>= unS . f)
 
-instance MonadState s (StratExec mv s) where
-  get = StratExec get
-  put = StratExec . put
+instance MonadState s (StratM g mv s) where
+  get = StratM get
+  put = StratM . put
 
-instance MonadIO (StratExec mv s) where
-  liftIO = StratExec . liftIO
+instance MonadIO (StratM g mv s) where
+  liftIO = StratM . liftIO
 
 update :: MonadState s m => (s -> s) -> m s
 update f = modify f >> get
@@ -100,11 +100,11 @@ update f = modify f >> get
 -- GameMonad Type Class --
 --------------------------
 
-class Monad m => GameMonad m mv | m -> mv where
-  getExecState :: m (ExecState mv)
+class Monad m => GameMonad m g mv | m -> g, m -> mv where
+  getExec :: m (Exec g mv)
 
-instance GameMonad (GameExec mv) mv where
-  getExecState = GameExec get
+instance GameMonad (ExecM g mv) g mv where
+  getExec = ExecM get
 
-instance GameMonad (StratExec mv s) mv where
-  getExecState = StratExec (lift getExecState)
+instance GameMonad (StratM g mv s) g mv where
+  getExec = StratM (lift getExec)
