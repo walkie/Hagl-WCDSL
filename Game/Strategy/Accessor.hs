@@ -4,6 +4,7 @@ import Control.Monad
 import Data.List
 import Game.Definition
 import Game.Execution
+import Game.Execution.Util
 
 --------------------
 -- Data Accessors --
@@ -33,11 +34,16 @@ isFirstGame = liftM (null . asList) history
 
 -- Transcript of each game.
 transcripts :: GameMonad m mv => m (ByGame (Transcript mv))
-transcripts = liftM (ByGame . fst . unzip . asList) history
+transcripts = do t <- transcript
+                 h <- history
+                 return (ByGame (t : (fst . unzip . asList) h))
 
 -- Summary of each game.
 summaries :: GameMonad m mv => m (ByGame (Summary mv))
-summaries = liftM (ByGame . snd . unzip . asList) history
+summaries = do g <- game
+               t <- transcript
+               h <- history
+               return (ByGame (summarize g t : (snd . unzip . asList) h))
 
 -- All moves made by each player in each game.
 moves :: GameMonad m mv => m (ByGame (ByPlayer [mv]))

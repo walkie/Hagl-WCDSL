@@ -142,19 +142,28 @@ frequency = "Huckleberry" `plays`
 crisis = extensive start
   where ussr = player 1
         usa  = player 2
+        nukesInTurkey = Payoff [  -2,   1]
+        nukesInCuba   = Payoff [   1,  -2]
         nuclearWar    = Payoff [-100,-100]
-        nukesInCuba   = Payoff [   1,  -1]
-        nukesInTurkey = Payoff [  -1,   1]
-        usaLooksGood  = Payoff [   0,   1]
+        noNukes       = Payoff [   0,   0]
         start = ussr ("Send Missiles to Cuba", usaResponse) 
                  <|> ("Do Nothing", nukesInTurkey)
         usaResponse = usa ("Do Nothing", nukesInTurkey <+> nukesInCuba)
                       <|> ("Blockade", ussrBlockadeCounter)
                       <|> ("Air Strike", ussrStrikeCounter)
-        ussrBlockadeCounter = ussr ("Agree to Terms", usaLooksGood) 
+        ussrBlockadeCounter = ussr ("Agree to Terms", noNukes) 
                                <|> ("Escalate", nuclearWar)
         ussrStrikeCounter = ussr ("Pull Out", nukesInTurkey)
                              <|> ("Escalate", nuclearWar)
+
+khrushchev = "Khrushchev" `plays` 
+  ("Send Missiles to Cuba" `initiallyThen`
+    do m <- his (prev move)
+       play $ case m of "Blockade" -> "Agree to Terms"
+                        "Air Strike" -> "Pull Out")
+
+
+kennedy = "Kennedy" `plays` mixed [(2, "Blockade"), (1, "Air Strike")]
 
 {-
 nuclearWar    = Payoff [-100,-100]
@@ -233,7 +242,7 @@ win b p = let h = chunk 3 b
 ticTacToe = takeTurns 2 end avail exec pay (replicate 9 Empty)
 
 -- A Minimax Player
-minimaxi = "Minimaxi" `plays` minimax
+mm = "Minimaxi" `plays` minimax
 
 --------------------
 -- The Match Game --   -- Try to force your opponent to take the last match.

@@ -1,6 +1,7 @@
 module Game.Strategy where
 
 import Control.Monad
+import Control.Monad.Trans
 import Data.List
 import Data.Maybe
 import Game.Definition
@@ -40,11 +41,11 @@ mixed = randomlyFrom . expandDist
 
 -- Perform some pattern of moves periodically.
 periodic :: [mv] -> Strategy mv s
-periodic ms = numGames >>= \n -> return $ ms !! mod n (length ms)
+periodic ms = numMoves >>= \n -> return $ ms !! mod n (length ms)
 
 -- Begin a list of strategies.
 atFirst :: Strategy mv s -> [Strategy mv s] -> Strategy mv s
-atFirst s ss = numGames >>= \n -> (s:ss) !!! n
+atFirst s ss = numMoves >>= \n -> (s:ss) !!! n
 
 -- Next in a list of strategies.
 next :: Strategy mv s -> [Strategy mv s] -> [Strategy mv s]
@@ -54,11 +55,11 @@ next = (:)
 finally :: Strategy mv s -> [Strategy mv s]
 finally = (:[])
 
--- Play a strategy in the first game, then another strategy thereafter.
+-- Play a strategy for the first move, then another strategy thereafter.
 atFirstThen :: Strategy mv s -> Strategy mv s -> Strategy mv s
 atFirstThen a b = atFirst a (finally b)
 
--- Play a move in the first game, then another strategy thereafter.
+-- Play an initial move, then another strategy thereafter.
 initiallyThen :: mv -> Strategy mv s -> Strategy mv s
 initiallyThen a b = atFirst (return a) (finally b)
 
@@ -91,3 +92,6 @@ infinity = 1/0
 
 maxIndex :: (Ord a) => [a] -> Int
 maxIndex as = fromJust $ elemIndex (maximum as) as
+
+numMoves :: GameMonad m mv => m Int
+numMoves = liftM (length . concat) (my `each` every moves)
