@@ -1,14 +1,197 @@
+{-# OPTIONS_GHC -fglasgow-exts #-}
+
 module Game.Definition where
 
 import Data.List
+import Data.Maybe
 import Data.Tree
+
 import Game.Util
 
 ---------------------
 -- Game Definition --
 ---------------------
 
+type PlayerIx = Int
+
+data Game mv d s = Game {
+    numPlayers   :: Int,
+    getAction    :: (d -> s -> Action mv s),
+    definition   :: d,
+    initialState :: s
+}
+
+data Action mv s = Decision PlayerIx [(mv, s)]
+                 | Chance [(Int, mv, s)]
+                 | Payoff [Float]
+
+next :: Game mv d s -> s -> Action mv s
+next (Game _ f d _) = f d
+
+-----------------------
+-- Normal Form Games --
+-----------------------
+
+type Normal mv = Game mv (N mv) (PlayerIx, [mv])
+
+data N mv = N Int [[mv]] ([mv] -> [Float])
+
+normal :: Eq mv => Int -> [[mv]] -> [[Float]] -> Normal mv
+normal np mss vs = Game np action (N np mss (payoff mss vs)) (0,[])
+  where action (N np mss pay) (p, ms)
+            | p < np = Decision (p+1) [(m, (p+1, ms ++ [m])) | m <- mss !! p]
+            | otherwise = Payoff (pay ms)
+        payoff mss vs ms = fromJust (lookup ms (zip (allCombs mss) vs))
+
+-- Construct a two-player Normal-Form game, where each player has the same moves.
+matrix :: Eq mv => [mv] -> [[Float]] -> Normal mv
+matrix ms = normal 2 [ms,ms]
+
+-- Construct a two-player Zero-Sum game, where each player has the same moves.
+zerosum :: Eq mv => [mv] -> [Float] -> Normal mv
+zerosum ms vs = matrix ms [[v, -v] | v <- vs]
+
+-------------------------
+-- Game Tree Traversal --
+-------------------------
+
+type GameTree mv s = Tree (Action mv s)
+
+tree :: Game mv d s -> GameTree mv s
+tree g@(Game _ _ _ s) = t s
+  where t s = Node (next g s) (map t (children g s))
+
+-- The moves that are available from this node.
+availMoves :: Game mv d s -> s -> [mv]
+availMoves g s = case next g s of
+    (Decision _ f) -> [m | (m,_)   <- f]
+    (Chance f)     -> [m | (_,m,_) <- f]
+    _ -> []
+
+-- The immediate children of a node.
+children :: Game mv d s -> s -> [s]
+children g s = case next g s of
+    (Decision _ f) -> [s' | (_,s')   <- f]
+    (Chance f)     -> [s' | (_,_,s') <- f]
+    _ -> []
+
+-- Nodes in BFS order.
+bfs :: Game mv d s -> s -> [s]
+bfs g s = let b [] = []
+              b ss = ss ++ b (concatMap (children g) ss)
+          in b [s]
+
+-- Nodes DFS order.
+dfs :: Game mv d s -> s -> [s]
+dfs g s = s : concatMap (dfs g) (children g s)
+
+-- Game tree as a Data.Tree structure.
+stateTree :: Game mv d s -> s -> Tree s
+stateTree g s = Node s $ map (stateTree g) (children g s)
+
+
+instance (Show mv) => Show (Game mv d s) where
+  show g = condense $ drawTree $ f "" (next g (initialState g))
+    where f p (Decision i ts) = Node (p ++ "Player " ++ show i) [f (show m ++ " -> ") (next g s) | (m, s) <- ts]
+          f p (Chance ts)     = Node (p ++ "Chance") [f (show m ++ "(" ++ show c ++ ") -> ") (next g s) | (c, m, s) <- ts]
+          f p (Payoff vs)     = Node (p ++ show vs) []
+          condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
+                       in unlines $ filter empty $ lines s
+
+-- The highest number player from this *finite* game tree.
+{- Works, but why is this needed?
+maxPlayer :: Game mv d s -> s -> PlayerIx
+maxPlayer g s = foldl1 max $ map (player g) (dfs g s)
+  where player (Game _ next _) s = case next s of
+            (Decision p _) -> p
+            _ -> 0
+-}
+
+{-
+data (GameDef d, GameState s mv) => Game d s mv = Game {
+    definition :: d,
+    gameState  :: s
+}
+
+class GameDef d where
+    numPlayers :: d -> Int
+
+class GameState s mv | s -> mv where
+    nextAction :: ExecM (Action s mv)
+    -- or: nextAction :: d -> s -> Action s mv
+
+data Action s mv = Decision PlayerIx [(mv, s)]
+                 | Chance [(Int, mv, s)]
+                 | Payoff [Float]
+
+
+
+type PlayerIx = Int
+
+data Action s mv = Decision PlayerIx [(mv, s)]
+                 | Chance [(Int, mv, s)]
+                 | Payoff [Float]
+
+class Game g s mv | g -> s, g -> mv where
+    numPlayers :: g -> Int
+    nextAction :: g -> s -> Action s mv
+
+-}
+
+{-
+type PlayerIx = Int
+
+data Action g mv = Decision PlayerIx [(mv, g)]
+                 | Chance [(Int, mv, g)]
+                 | Payoff [Float]
+
+class Game g mv | g -> mv where
+    numPlayers :: g -> Int
+    nextAction :: g -> Action g mv
+
+-------------------------
+-- Game Tree Traversal --
+-------------------------
+
+-- The moves that are available from this node.
+availMoves :: Game g mv => g -> [mv]
+availMoves g = case nextAction g of
+    (Decision _ f) -> [m | (m,_)   <- f]
+    (Chance d)     -> [m | (_,m,_) <- d]
+    _ -> []
+
+-- The immediate children of a node.
+children :: Game g mv => g -> [g]
+children g = case nextAction g of
+    (Decision _ f) -> [g' | (_,g')   <- f]
+    (Chance d)     -> [g' | (_,_,g') <- d]
+    _ -> []
+
+-- Nodes in BFS order.
+bfs :: Game g mv => g -> [g]
+bfs g = let b [] = []
+            b gs = gs ++ b (concatMap children gs)
+        in b [g]
+
+-- Nodes DFS order.
+dfs :: Game g mv => g -> [g]
+dfs g = g : concatMap dfs (children g)
+
+-- Game tree as a Data.Tree structure.
+asTree :: Game g mv => g -> Tree g
+asTree g = Node g $ map asTree (children g)
+
+-- The highest number player from this *finite* game tree.
+maxPlayer :: Game g mv => g -> PlayerIx
+maxPlayer g = foldl1 max $ map player (dfs g)
+  where player g = case nextAction g of
+            (Decision p _) -> p
+            _ -> 0
+
+-}
+
 -- Game Definition
+{-
 data Game mv = Game {
     numPlayers :: Int,
     info       :: GameTree mv -> InfoGroup mv,
@@ -16,7 +199,6 @@ data Game mv = Game {
 }
 
 -- Game Tree
-type PlayerIx = Int
 data GameTree mv = Decision PlayerIx [(mv, GameTree mv)]
                  | Chance [(Int, GameTree mv)]
                  | Payoff [Float]
@@ -143,11 +325,6 @@ Decision i ms <|> m = Decision i (m:ms)
 -- Game Tree Traversal --
 -------------------------
 
--- Returns the highest number player from this finite game tree.
-maxPlayer :: GameTree mv -> PlayerIx
-maxPlayer t = foldl1 max $ map p (dfs t)
-  where p (Decision i _) = i
-        p _ = 0
 
 -- Return the moves that are available from this node.
 availMoves :: GameTree mv -> [mv]
@@ -160,16 +337,4 @@ children (Decision _ ms) = map snd ms
 children (Chance cs) = map snd cs
 children _ = []
 
--- Search nodes in BFS order.
-bfs :: GameTree mv -> [GameTree mv]
-bfs t = let b [] = []
-            b ts = ts ++ b (concatMap children ts)
-        in b [t]
-
--- Search nodes DFS order.
-dfs :: GameTree mv -> [GameTree mv]
-dfs t = t : concatMap dfs (children t)
-
--- Get the game tree as a Data.Tree structure.
-asTree :: GameTree mv -> Tree (GameTree mv)
-asTree t = Node t $ map asTree (children t)
+-}
