@@ -7,15 +7,10 @@ import Data.Maybe
 
 import Game.Util
 
---type Payoff = ByPlayer Float
 type Payoff = ByPlayer Float
 type Profile mv = ByPlayer mv -- pure strategy profile
 type PlayerIx = Int
 
---data Normal mv = Normal Int (ByPlayer [mv]) ([mv] -> Payoff)
---data Normal mv = Normal Int (PlayerIx -> [mv]) ([mv] -> Payoff)
---data Normal mv = Normal Int [[mv]] ([mv] -> Payoff)
---data Normal mv = Normal Int (PlayerIx -> [mv]) ([mv] -> Payoff)
 data Normal mv = Normal Int (ByPlayer [mv]) [Payoff]
 
 numPlayers :: Normal mv -> Int
@@ -27,24 +22,17 @@ payoff (Normal _ mss ps) ms = fromJust (lookup ms (zip (cross mss) ps))
 moves :: Normal mv -> PlayerIx -> [mv]
 moves (Normal _ mss _) p = mss `forPlayer` p
 
-normal :: Eq mv => Int -> [[mv]] -> [[Float]] -> Normal mv
-normal np mss vs = Normal np (ByPlayer mss) (map ByPlayer vs)
-
 -- A list of all pure strategy profiles.
 profiles :: Normal mv -> [Profile mv]
 profiles (Normal _ mss _) = cross mss
 
-{-
-moves :: Normal mv -> PlayerIx -> [mv]
-moves (Normal _ mss _) = (mss !!)
+------------------------
+-- Smart Constructors --
+------------------------
 
-numPlayers :: Normal mv -> Int
-numPlayers (Normal np _ _) = np
-
+-- Smart constructor to build from bare lists.
 normal :: Eq mv => Int -> [[mv]] -> [[Float]] -> Normal mv
-normal np mss vs = Normal np mss payoff
-  where payoff ms = fromJust (lookup ms (zip (allCombs mss) vs))
--}
+normal np mss vs = Normal np (ByPlayer mss) (map ByPlayer vs)
 
 -- Construct a two-player Normal-Form game, where each player has the same moves.
 matrix :: Eq mv => [mv] -> [[Float]] -> Normal mv
@@ -54,28 +42,9 @@ matrix ms = normal 2 [ms,ms]
 zerosum :: Eq mv => [mv] -> [Float] -> Normal mv
 zerosum ms vs = matrix ms [[v, -v] | v <- vs]
 
-{-
--- Finds all pure nash equilibrium solutions..
-nash :: Eq mv => Normal mv -> [[mv]]
-nash (Normal np mss pay) = [s | s <- allCombs mss, stable s]
-  where stable s = all (uni s) [0..(np-1)]
-        uni s p = and [pay s !! p >= pay s' !! p | s' <- change s p]
-        change s p = let (h,_:t) = splitAt p s 
-                     in [h ++ e:t | e <- mss !! p]
-
--- Finds all strong Pareto optimal solutions.
-pareto :: Eq mv => Normal mv -> [[mv]]
-pareto (Normal np mss pay) = [s | s <- ss, opt s]
-  where ss = allCombs mss
-        opt ms = not (any (imp ms) ss)
-        imp ms ms' = let (p, p') = (pay ms, pay ms')
-                     in or (zipWith (>) p' p) &&
-                        and (zipWith (>=) p' p)
-
--- Finds all payoff dominant solutions.
-dominant :: Eq mv => Normal mv -> [[mv]]
-dominant g = nash g `intersect` pareto g
--}
+---------------------------
+-- Equilibrium solutions --
+---------------------------
 
 -- Finds all pure nash equilibrium solutions..
 nash :: Eq mv => Normal mv -> [Profile mv]
@@ -97,6 +66,7 @@ pareto g = [s | s <- profiles g, opt s]
 -- Finds all payoff dominant solutions.
 dominant :: Eq mv => Normal mv -> [Profile mv]
 dominant g = nash g `intersect` pareto g
+
 
 -- Delete me when merged with other code...
 data ByGame a = ByGame [a] deriving (Eq, Show)
