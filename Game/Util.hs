@@ -2,6 +2,15 @@ module Game.Util where
 
 import Data.List
 
+-- TODO: Organize this file, figure out what's needed where, etc.
+
+update :: MonadState s m => (s -> s) -> m s
+update f = modify f >> get
+
+--------------------
+-- List Functions --
+--------------------
+
 expandDist :: [(Int, a)] -> [a]
 expandDist d = concat [replicate i a | (i, a) <- d]
 

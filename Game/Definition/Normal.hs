@@ -5,16 +5,17 @@ module Game.Definition.Normal where
 import Data.List
 import Data.Maybe
 
+import Game.Types
 import Game.Util
 
-type Payoff = ByPlayer Float
 type Profile mv = ByPlayer mv -- pure strategy profile
-type PlayerIx = Int
 
 data Normal mv = Normal Int (ByPlayer [mv]) [Payoff]
 
-numPlayers :: Normal mv -> Int
-numPlayers (Normal np _ _) = np
+instance Game (Normal mv) mv where
+  numPlayers (Normal np _ _) = np
+  runGame = do ps <- players
+               ms <- map decide players
 
 payoff :: Eq mv => Normal mv -> Profile mv -> Payoff
 payoff (Normal _ mss ps) ms = fromJust (lookup ms (zip (cross mss) ps))
@@ -66,35 +67,6 @@ pareto g = [s | s <- profiles g, opt s]
 -- Finds all payoff dominant solutions.
 dominant :: Eq mv => Normal mv -> [Profile mv]
 dominant g = nash g `intersect` pareto g
-
-
--- Delete me when merged with other code...
-data ByGame a = ByGame [a] deriving (Eq, Show)
-data ByPlayer a = ByPlayer [a] deriving (Eq, Show)
-
-forGame :: ByGame a -> Int -> a
-forGame (ByGame as) p = as !! (p-1)
-
-forPlayer :: ByPlayer a -> PlayerIx -> a
-forPlayer (ByPlayer as) p = as !! (p-1)
-
-class DList d where
-  fromList :: [a] -> d a
-  toList :: d a -> [a]
-instance DList ByGame where
-  fromList = ByGame
-  toList (ByGame as) = as
-instance DList ByPlayer where
-  fromList = ByPlayer
-  toList (ByPlayer as) = as
-
-cross :: DList d => d [a] -> [d a]
-cross xss = map fromList (c (toList xss))
-  where c (xs:xss) = [y:ys | y <- xs, ys <- c xss]
-        c [] = [[]]
-
-toList2 :: (DList f, DList g) => f (g a) -> [[a]]
-toList2 = map toList . toList
 
 -- Examples
 

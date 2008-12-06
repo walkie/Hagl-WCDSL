@@ -2,101 +2,14 @@
 
 module Game.Definition where
 
-import Data.List
-import Data.Maybe
-import Data.Tree
+import Game.Types
 
-import Game.Util
+runStrategy :: Player mv -> ExecM mv (mv, Player mv)
+runStrategy (Player n s m) = do (mv, s') <- runStateT (unS m) s
+                                return (mv, Player n s' m)
+decide :: Player mv -> ExecM mv
+decide 
 
----------------------
--- Game Definition --
----------------------
-
-type PlayerIx = Int
-
-data Game mv d s = Game {
-    numPlayers   :: Int,
-    getAction    :: (d -> s -> Action mv s),
-    definition   :: d,
-    initialState :: s
-}
-
-data Action mv s = Decision PlayerIx [(mv, s)]
-                 | Chance [(Int, mv, s)]
-                 | Payoff [Float]
-
-next :: Game mv d s -> s -> Action mv s
-next (Game _ f d _) = f d
-
------------------------
--- Normal Form Games --
------------------------
-
-type Normal mv = Game mv (N mv) (PlayerIx, [mv])
-
-data N mv = N Int [[mv]] ([mv] -> [Float])
-
-normal :: Eq mv => Int -> [[mv]] -> [[Float]] -> Normal mv
-normal np mss vs = Game np action (N np mss (payoff mss vs)) (0,[])
-  where action (N np mss pay) (p, ms)
-            | p < np = Decision (p+1) [(m, (p+1, ms ++ [m])) | m <- mss !! p]
-            | otherwise = Payoff (pay ms)
-        payoff mss vs ms = fromJust (lookup ms (zip (allCombs mss) vs))
-
--- Construct a two-player Normal-Form game, where each player has the same moves.
-matrix :: Eq mv => [mv] -> [[Float]] -> Normal mv
-matrix ms = normal 2 [ms,ms]
-
--- Construct a two-player Zero-Sum game, where each player has the same moves.
-zerosum :: Eq mv => [mv] -> [Float] -> Normal mv
-zerosum ms vs = matrix ms [[v, -v] | v <- vs]
-
--------------------------
--- Game Tree Traversal --
--------------------------
-
-type GameTree mv s = Tree (Action mv s)
-
-tree :: Game mv d s -> GameTree mv s
-tree g@(Game _ _ _ s) = t s
-  where t s = Node (next g s) (map t (children g s))
-
--- The moves that are available from this node.
-availMoves :: Game mv d s -> s -> [mv]
-availMoves g s = case next g s of
-    (Decision _ f) -> [m | (m,_)   <- f]
-    (Chance f)     -> [m | (_,m,_) <- f]
-    _ -> []
-
--- The immediate children of a node.
-children :: Game mv d s -> s -> [s]
-children g s = case next g s of
-    (Decision _ f) -> [s' | (_,s')   <- f]
-    (Chance f)     -> [s' | (_,_,s') <- f]
-    _ -> []
-
--- Nodes in BFS order.
-bfs :: Game mv d s -> s -> [s]
-bfs g s = let b [] = []
-              b ss = ss ++ b (concatMap (children g) ss)
-          in b [s]
-
--- Nodes DFS order.
-dfs :: Game mv d s -> s -> [s]
-dfs g s = s : concatMap (dfs g) (children g s)
-
--- Game tree as a Data.Tree structure.
-stateTree :: Game mv d s -> s -> Tree s
-stateTree g s = Node s $ map (stateTree g) (children g s)
-
-
-instance (Show mv) => Show (Game mv d s) where
-  show g = condense $ drawTree $ f "" (next g (initialState g))
-    where f p (Decision i ts) = Node (p ++ "Player " ++ show i) [f (show m ++ " -> ") (next g s) | (m, s) <- ts]
-          f p (Chance ts)     = Node (p ++ "Chance") [f (show m ++ "(" ++ show c ++ ") -> ") (next g s) | (c, m, s) <- ts]
-          f p (Payoff vs)     = Node (p ++ show vs) []
-          condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
-                       in unlines $ filter empty $ lines s
 
 -- The highest number player from this *finite* game tree.
 {- Works, but why is this needed?
