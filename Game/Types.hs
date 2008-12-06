@@ -12,7 +12,7 @@ type PlayerIx = Int
 type Payoff = ByPlayer Float
 
 type Edge g = (GameMove g, GameTree g)
-type Dist a = [(Int, a)]
+type Dist a = [(Int, a)] -- Maybe incorporate probability package?
 
 data GameTree g = Node (GameState g) (NodeType g)
 data NodeType g = DN PlayerIx [Edge g]
