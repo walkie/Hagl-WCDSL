@@ -12,10 +12,15 @@ type Profile mv = ByPlayer mv -- pure strategy profile
 
 data Normal mv = Normal Int (ByPlayer [mv]) [Payoff]
 
-instance Game (Normal mv) mv where
+type instance GameMove (Normal mv) = mv
+type instance GameState (Normal mv) = ()
+
+instance Eq mv => Game (Normal mv) where
   numPlayers (Normal np _ _) = np
-  runGame = do ps <- players
-               ms <- map decide players
+  gameTree g = ply (numPlayers g) []
+    where ply 0 ms = n (PN (payoff g (ByPlayer ms)))
+          ply p ms = n (DN p [(m, ply (p-1) (m:ms)) | m <- moves g p])
+          n = Node ()
 
 payoff :: Eq mv => Normal mv -> Profile mv -> Payoff
 payoff (Normal _ mss ps) ms = fromJust (lookup ms (zip (cross mss) ps))

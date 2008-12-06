@@ -11,11 +11,20 @@ import Control.Monad.State
 type PlayerIx = Int
 type Payoff = ByPlayer Float
 
-data Game g 
+type Edge g = (GameMove g, GameTree g)
+type Dist a = [(Int, a)]
 
-class Game g mv | g -> mv where
+data GameTree g = Node (GameState g) (NodeType g)
+data NodeType g = DN PlayerIx [Edge g]
+                | CN (Dist (Edge g))
+                | PN Payoff
+
+type family GameMove g
+type family GameState g
+
+class Game g where
   numPlayers :: g -> Int
-  runGame    :: ExecM g mv (Summary mv)
+  gameTree   :: g -> GameTree g
 
 -----------------------
 -- Player Definition --
@@ -23,40 +32,41 @@ class Game g mv | g -> mv where
 
 type Name = String
 
-data Player g mv = forall s.
+data Player g = forall s.
   Player {
     name     :: Name,
     state    :: s,
-    strategy :: Strategy g mv s
+    strategy :: Strategy g s
   }
 
-instance Show (Player g mv) where
+instance Show (Player g) where
   show = name
-instance Eq (Player g mv) where
+instance Eq (Player g) where
   a == b = name a == name b
-instance Ord (Player g mv) where
+instance Ord (Player g) where
   compare a b = compare (name a) (name b)
 
 --------------------
 -- Game Execution --
 --------------------
 
-data Exec g mv = Exec {
-    --_game    :: g,
-    _game    :: Game g mv,
-    _players :: [Player g mv],
-    _history :: History mv
+data Exec g = Exec {
+    _game      :: g,
+    _players   :: [Player g],
+    _gameState :: GameState g
+    --_history :: History mv
 }
 
+-- These should be moved into Iterated...
 type History mv = ByGame (Summary mv)
 type Summary mv = ([mv], ByPlayer [mv], Payoff)
 
-data ExecM    g mv a   = ExecM  { unG :: StateT (Exec g mv) IO a }
-data StratM   g mv s a = StratM { unS :: StateT s (ExecM g mv) a }
-type Strategy g mv s   = StratM g mv s mv
+data ExecM    g a   = ExecM  { unG :: StateT (Exec g) IO a }
+data StratM   g s a = StratM { unS :: StateT s (ExecM g) a }
+type Strategy g s   = StratM g s (GameMove g)
 
-class Monad m => GameMonad m g mv | m -> g, m -> mv where
-  getExec :: m (Exec g mv)
+class Monad m => GameMonad m g | m -> g where
+  getExec :: m (Exec g)
 
 -----------------------
 -- Dimensioned Lists --
@@ -94,31 +104,31 @@ toList2 = map toList . toList
 ---------------------
 
 -- ExecM instances
-instance Monad (ExecM g mv) where
+instance Monad (ExecM g) where
   return = ExecM . return
   (ExecM x) >>= f = ExecM (x >>= unG . f)
 
-instance MonadState (Exec g mv) (ExecM g mv) where
+instance MonadState (Exec g) (ExecM g) where
   get = ExecM get
   put = ExecM . put
 
-instance MonadIO (ExecM g mv) where
+instance MonadIO (ExecM g) where
   liftIO = ExecM . liftIO
 
-instance GameMonad (ExecM g mv) g mv where
+instance GameMonad (ExecM g) g where
   getExec = ExecM get
 
 -- StratM instances
-instance Monad (StratM g mv s) where
+instance Monad (StratM g s) where
   return = StratM . return
   (StratM x) >>= f = StratM (x >>= unS . f)
 
-instance MonadState s (StratM g mv s) where
+instance MonadState s (StratM g s) where
   get = StratM get
   put = StratM . put
 
-instance MonadIO (StratM g mv s) where
+instance MonadIO (StratM g s) where
   liftIO = StratM . liftIO
 
-instance GameMonad (StratM g mv s) g mv where
+instance GameMonad (StratM g s) g where
   getExec = StratM (lift getExec)
