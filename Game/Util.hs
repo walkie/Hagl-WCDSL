@@ -1,5 +1,6 @@
 module Game.Util where
 
+import Control.Monad.State
 import Data.List
 
 -- TODO: Organize this file, figure out what's needed where, etc.
