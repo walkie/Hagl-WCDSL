@@ -1,95 +1,137 @@
-{-# OPTIONS_GHC -fglasgow-exts #-}
+{-# OPTIONS_GHC -fglasgow-exts -XUndecidableInstances #-}
 
-module Game.Definition where
+module Hagl.Game where
 
-import Game.Types
+import Data.List
+import qualified Data.Tree as Tree
 
-runStrategy :: Player mv -> ExecM mv (mv, Player mv)
-runStrategy (Player n s m) = do (mv, s') <- runStateT (unS m) s
-                                return (mv, Player n s' m)
-decide :: Player mv -> ExecM mv
-decide 
+import Hagl.Lists
 
+---------------------
+-- Game Definition --
+---------------------
 
--- The highest number player from this *finite* game tree.
-{- Works, but why is this needed?
-maxPlayer :: Game mv d s -> s -> PlayerIx
-maxPlayer g s = foldl1 max $ map (player g) (dfs g s)
-  where player (Game _ next _) s = case next s of
-            (Decision p _) -> p
-            _ -> 0
--}
+class Game g where
+  type Move g
+  type State g
+  numPlayers :: g -> Int
+  gameTree   :: g -> GameTree g
+  info       :: g -> Info g
 
-{-
-data (GameDef d, GameState s mv) => Game d s mv = Game {
-    definition :: d,
-    gameState  :: s
-}
+------------------------
+-- Information Groups --
+------------------------
 
-class GameDef d where
-    numPlayers :: d -> Int
+type Info g = GameTree g -> InfoGroup g
 
-class GameState s mv | s -> mv where
-    nextAction :: ExecM (Action s mv)
-    -- or: nextAction :: d -> s -> Action s mv
+data InfoGroup g = Perfect (GameTree g)
+                 | Imperfect [GameTree g]
+                 | NoInfo
 
-data Action s mv = Decision PlayerIx [(mv, s)]
-                 | Chance [(Int, mv, s)]
-                 | Payoff [Float]
+--
+-- Smart constructors for deriving information groups for classes of games.
+--
 
+perfect :: g -> Info g
+perfect _ = Perfect
 
+simultaneous :: g -> Info g
+simultaneous _ _ = NoInfo
+
+----------------
+-- Game Trees --
+----------------
 
 type PlayerIx = Int
+type Payoff = ByPlayer Float
 
-data Action s mv = Decision PlayerIx [(mv, s)]
-                 | Chance [(Int, mv, s)]
-                 | Payoff [Float]
+type Edge g = (Move g, GameTree g)
 
-class Game g s mv | g -> s, g -> mv where
-    numPlayers :: g -> Int
-    nextAction :: g -> s -> Action s mv
+data GameTree g = Node (State g) (NodeType g)
+data NodeType g = DN PlayerIx [Edge g] -- decision made by a player
+                | CN (Dist (Edge g))   -- random move from distribution
+                | PN Payoff            -- terminating payoff
 
--}
+--
+-- Smart constructors for defining stateless game trees.
+--
 
-{-
-type PlayerIx = Int
+decision :: State g ~ () => PlayerIx -> [Edge g] -> GameTree g
+decision p = Node () . DN p
 
-data Action g mv = Decision PlayerIx [(mv, g)]
-                 | Chance [(Int, mv, g)]
-                 | Payoff [Float]
+chance :: State g ~ () => Dist (Edge g) -> GameTree g
+chance = Node () . CN
 
-class Game g mv | g -> mv where
-    numPlayers :: g -> Int
-    nextAction :: g -> Action g mv
+payoff :: State g ~ () => Payoff -> GameTree g
+payoff = Node () . PN
 
--------------------------
--- Game Tree Traversal --
--------------------------
+--
+-- Functions for traversing game trees.
+--
 
--- The moves that are available from this node.
-availMoves :: Game g mv => g -> [mv]
-availMoves g = case nextAction g of
-    (Decision _ f) -> [m | (m,_)   <- f]
-    (Chance d)     -> [m | (_,m,_) <- d]
-    _ -> []
+-- The moves available from a node.
+availMoves :: GameTree g -> [Move g]
+availMoves (Node _ (DN _ es)) = [m | (m,_) <- es]
+availMoves (Node _ (CN d)) = [m | (_,(m,_)) <- d]
+availMoves _ = []
 
 -- The immediate children of a node.
-children :: Game g mv => g -> [g]
-children g = case nextAction g of
-    (Decision _ f) -> [g' | (_,g')   <- f]
-    (Chance d)     -> [g' | (_,_,g') <- d]
-    _ -> []
+children :: GameTree g -> [GameTree g]
+children (Node _ (DN _ es)) = [n | (_,n) <- es]
+children (Node _ (CN d)) = [n | (_,(_,n)) <- d]
+children _ = []
 
 -- Nodes in BFS order.
-bfs :: Game g mv => g -> [g]
-bfs g = let b [] = []
-            b gs = gs ++ b (concatMap children gs)
-        in b [g]
+bfs :: GameTree g -> [GameTree g]
+bfs t = let b [] = []
+            b ns = ns ++ b (concatMap children ns)
+        in b [t]
 
 -- Nodes DFS order.
-dfs :: Game g mv => g -> [g]
-dfs g = g : concatMap dfs (children g)
+dfs :: GameTree g -> [GameTree g]
+dfs t = t : concatMap dfs (children t)
 
+---------------
+-- Instances --
+---------------
+
+-- Eq
+
+instance (Eq (Move g), Eq (State g)) => Eq (InfoGroup g) where
+  (Perfect t1) == (Perfect t2) = t1 == t2
+  (Imperfect t1) == (Imperfect t2) = t1 == t2
+  NoInfo == NoInfo = True
+  _ == _ = False
+
+instance (Eq (Move g), Eq (State g)) => Eq (GameTree g) where
+  (Node s1 t1) == (Node s2 t2) = s1 == s2 && t1 == t2
+
+instance (Eq (Move g), Eq (State g)) => Eq (NodeType g) where
+  (DN p1 es1) == (DN p2 es2) = p1 == p2 && es1 == es2
+  (CN d1) == (CN d2) = d1 == d2
+  (PN v1) == (PN v2) = v1 == v2
+  _ == _ = False
+
+-- Show
+
+instance Show (Move g) => Show (InfoGroup g) where
+  show (Perfect t) = show t
+  show (Imperfect ts) = unlines $ intersperse "*** OR ***" (map show ts)
+  show NoInfo = "Cannot show this location in the game tree."
+
+instance Show (Move g) => Show (GameTree g) where
+  show g = condense $ Tree.drawTree $ t "" g
+    where t pre (Node _ nt) =
+            let s (DN p es) = pre ++ "Player " ++ show p
+                s (CN d) = pre ++ "Chance"
+                s (PN (ByPlayer vs)) = pre ++ show vs
+                c (DN p es) = [t (show m ++ " -> ") g | (m,g) <- es]
+                c (CN d) = [t (show i ++ " * " ++ show m ++ " -> ") g | (i,(m,g)) <- d]
+                c (PN _) = []
+            in Tree.Node (s nt) (c nt)
+          condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
+                       in unlines $ filter empty $ lines s
+{-
 -- Game tree as a Data.Tree structure.
 asTree :: Game g mv => g -> Tree g
 asTree g = Node g $ map asTree (children g)
@@ -100,7 +142,6 @@ maxPlayer g = foldl1 max $ map player (dfs g)
   where player g = case nextAction g of
             (Decision p _) -> p
             _ -> 0
-
 -}
 
 -- Game Definition

@@ -5,6 +5,10 @@ import Game.Definition
 import Game.Execution
 import System.Random
 
+fromDist :: Dist a -> IO a
+fromDist d = let l = expandDist d
+             in liftM (l !!) (randomRIO (0, length l))
+
 -- Generate a string showing a set of players' scores.
 scoreString :: Show m => [Player m] -> [Float] -> String 
 scoreString ps vs = unlines ["  "++show p++": "++show v | (p,v) <- zip ps vs]
