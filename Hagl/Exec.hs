@@ -1,110 +1,96 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
 
-module Game.Execution where
+module Hagl.Exec where
 
 import Control.Monad.State
 
------------
--- Types --
------------
+import Hagl.Game
+import Hagl.Lists
+
+---------------------
+-- Execution State --
+---------------------
 
 -- Game Execution State
-data Exec g mv = Exec {
-    _initial  :: g,             -- initial game definition
-    _current  :: g,             -- current state of game
-    _players  :: [Player g mv], -- players active in game
-    _events   :: [Event mv],    -- events so far this game (newest at head)
-    _history  :: History mv     -- a summary of each game
+data Exec g = Exec {
+  _game    :: g,          -- game definition
+  _current :: GameTree g, -- the current location in the game tree
+  _players :: [Player g], -- players active in game
+  _events  :: [Event g],  -- events so far this iteration (newest at head)
+  _history :: History g   -- a summary of each iteration
 }
 
 -- History
-type History mv = ByGame ([Event mv], Summary mv)
-type Summary mv = (ByPlayer [mv], ByPlayer Float)
+type History g = ByGame ([Event g], Summary g)
+type Summary g = (ByPlayer [Move g], ByPlayer Float)
 
-type PlayerIx = Int
+data Event g = DecisionEvent PlayerIx (Move g)
+             | ChanceEvent (Move g)
+             | PayoffEvent Payoff
 
-data Event mv = DecisionEvent PlayerIx mv
-              | ChanceEvent mv
-              | PayoffEvent [Float]
-              deriving (Eq, Show)
+-------------
+-- Players --
+-------------
 
-data ByGame a = ByGame [a] deriving (Eq, Show)
-data ByPlayer a = ByPlayer [a] deriving (Eq, Show)
-
-class DList f where
-  asList :: f a -> [a]
-instance DList ByGame where
-  asList (ByGame as) = as
-instance DList ByPlayer where
-  asList (ByPlayer as) = as
-
-asList2 :: (DList f, DList g) => f (g a) -> [[a]]
-asList2 = map asList . asList
-
--- Player
 type Name = String
 
-data Player g mv = forall s.
+data Player g = forall s.
   Player {
     name     :: Name,
     state    :: s,
-    strategy :: Strategy g mv s
+    strategy :: Strategy g s
   }
 
-plays :: Name -> Strategy g mv () -> Player g mv
+plays :: Name -> Strategy g () -> Player g
 plays n s = Player n () s
 
-instance Show (Player g mv) where
+instance Show (Player g) where
   show = name
-instance Eq (Player g mv) where
+instance Eq (Player g) where
   a == b = name a == name b
-instance Ord (Player g mv) where
+instance Ord (Player g) where
   compare a b = compare (name a) (name b)
 
-----------------------------------------
--- Game Execution and Strategy Monads --
-----------------------------------------
+-----------------------------------
+-- Execution and Strategy Monads --
+-----------------------------------
 
-data ExecM    g mv a   = ExecM  { unG :: StateT (Exec g mv) IO a }
-data StratM   g mv s a = StratM { unS :: StateT s (ExecM g mv) a }
-type Strategy g mv s   = StratM g mv s mv
+data ExecM    g a   = ExecM  { unE :: StateT (Exec g) IO a }
+data StratM   g s a = StratM { unS :: StateT s (ExecM g) a }
+type Strategy g s   = StratM g s (Move g)
 
--- ExecM instances
-instance Monad (ExecM g mv) where
-  return = ExecM . return
-  (ExecM x) >>= f = ExecM (x >>= unG . f)
-
-instance MonadState (Exec g mv) (ExecM g mv) where
-  get = ExecM get
-  put = ExecM . put
-
-instance MonadIO (ExecM g mv) where
-  liftIO = ExecM . liftIO
-
--- StratM instances
-instance Monad (StratM g mv s) where
-  return = StratM . return
-  (StratM x) >>= f = StratM (x >>= unS . f)
-
-instance MonadState s (StratM g mv s) where
-  get = StratM get
-  put = StratM . put
-
-instance MonadIO (StratM g mv s) where
-  liftIO = StratM . liftIO
+class Monad m => GameMonad m g | m -> g where
+  getExec :: m (Exec g)
 
 update :: MonadState s m => (s -> s) -> m s
 update f = modify f >> get
 
---------------------------
--- GameMonad Type Class --
---------------------------
+-- ExecM instances
+instance Monad (ExecM g) where
+  return = ExecM . return
+  (ExecM x) >>= f = ExecM (x >>= unE . f)
 
-class Monad m => GameMonad m g mv | m -> g, m -> mv where
-  getExec :: m (Exec g mv)
+instance MonadState (Exec g) (ExecM g) where
+  get = ExecM get
+  put = ExecM . put
 
-instance GameMonad (ExecM g mv) g mv where
+instance MonadIO (ExecM g) where
+  liftIO = ExecM . liftIO
+
+instance GameMonad (ExecM g) g where
   getExec = ExecM get
 
-instance GameMonad (StratM g mv s) g mv where
+-- StratM instances
+instance Monad (StratM g s) where
+  return = StratM . return
+  (StratM x) >>= f = StratM (x >>= unS . f)
+
+instance MonadState s (StratM g s) where
+  get = StratM get
+  put = StratM . put
+
+instance MonadIO (StratM g s) where
+  liftIO = StratM . liftIO
+
+instance GameMonad (StratM g s) g where
   getExec = StratM (lift getExec)

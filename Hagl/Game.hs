@@ -11,6 +11,9 @@ import Hagl.Lists
 -- Game Definition --
 ---------------------
 
+type PlayerIx = Int
+type Payoff = ByPlayer Float
+
 class Game g where
   type Move g
   type State g
@@ -42,28 +45,25 @@ simultaneous _ _ = NoInfo
 -- Game Trees --
 ----------------
 
-type PlayerIx = Int
-type Payoff = ByPlayer Float
-
 type Edge g = (Move g, GameTree g)
 
 data GameTree g = Node (State g) (NodeType g)
-data NodeType g = DN PlayerIx [Edge g] -- decision made by a player
-                | CN (Dist (Edge g))   -- random move from distribution
-                | PN Payoff            -- terminating payoff
+data NodeType g = Decision PlayerIx [Edge g] -- decision made by a player
+                | Chance (Dist (Edge g))     -- random move from distribution
+                | Payoff Payoff              -- terminating payoff
 
 --
 -- Smart constructors for defining stateless game trees.
 --
 
 decision :: State g ~ () => PlayerIx -> [Edge g] -> GameTree g
-decision p = Node () . DN p
+decision p = Node () . Decision p
 
 chance :: State g ~ () => Dist (Edge g) -> GameTree g
-chance = Node () . CN
+chance = Node () . Chance
 
 payoff :: State g ~ () => Payoff -> GameTree g
-payoff = Node () . PN
+payoff = Node () . Payoff
 
 --
 -- Functions for traversing game trees.
@@ -71,14 +71,14 @@ payoff = Node () . PN
 
 -- The moves available from a node.
 availMoves :: GameTree g -> [Move g]
-availMoves (Node _ (DN _ es)) = [m | (m,_) <- es]
-availMoves (Node _ (CN d)) = [m | (_,(m,_)) <- d]
+availMoves (Node _ (Decision _ es)) = [m | (m,_) <- es]
+availMoves (Node _ (Chance d)) = [m | (_,(m,_)) <- d]
 availMoves _ = []
 
 -- The immediate children of a node.
 children :: GameTree g -> [GameTree g]
-children (Node _ (DN _ es)) = [n | (_,n) <- es]
-children (Node _ (CN d)) = [n | (_,(_,n)) <- d]
+children (Node _ (Decision _ es)) = [n | (_,n) <- es]
+children (Node _ (Chance d)) = [n | (_,(_,n)) <- d]
 children _ = []
 
 -- Nodes in BFS order.
@@ -107,9 +107,9 @@ instance (Eq (Move g), Eq (State g)) => Eq (GameTree g) where
   (Node s1 t1) == (Node s2 t2) = s1 == s2 && t1 == t2
 
 instance (Eq (Move g), Eq (State g)) => Eq (NodeType g) where
-  (DN p1 es1) == (DN p2 es2) = p1 == p2 && es1 == es2
-  (CN d1) == (CN d2) = d1 == d2
-  (PN v1) == (PN v2) = v1 == v2
+  (Decision p1 es1) == (Decision p2 es2) = p1 == p2 && es1 == es2
+  (Chance d1) == (Chance d2) = d1 == d2
+  (Payoff v1) == (Payoff v2) = v1 == v2
   _ == _ = False
 
 -- Show
@@ -122,12 +122,12 @@ instance Show (Move g) => Show (InfoGroup g) where
 instance Show (Move g) => Show (GameTree g) where
   show g = condense $ Tree.drawTree $ t "" g
     where t pre (Node _ nt) =
-            let s (DN p es) = pre ++ "Player " ++ show p
-                s (CN d) = pre ++ "Chance"
-                s (PN (ByPlayer vs)) = pre ++ show vs
-                c (DN p es) = [t (show m ++ " -> ") g | (m,g) <- es]
-                c (CN d) = [t (show i ++ " * " ++ show m ++ " -> ") g | (i,(m,g)) <- d]
-                c (PN _) = []
+            let s (Decision p es) = pre ++ "Player " ++ show p
+                s (Chance d) = pre ++ "Chance"
+                s (Payoff (ByPlayer vs)) = pre ++ show vs
+                c (Decision p es) = [t (show m ++ " -> ") g | (m,g) <- es]
+                c (Chance d) = [t (show i ++ " * " ++ show m ++ " -> ") g | (i,(m,g)) <- d]
+                c (Payoff _) = []
             in Tree.Node (s nt) (c nt)
           condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
                        in unlines $ filter empty $ lines s
