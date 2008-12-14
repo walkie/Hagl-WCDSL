@@ -33,17 +33,17 @@ step = get >>= \state ->
               put state { _current = fromMaybe (error ("No such move: " ++ show m)) 
                                                (lookup m es),
                           _players = ph ++ p' : pt,
-                          _events = DecisionEvent i m : _events state }
+                          _transcript = DecisionEvent i m : _transcript state }
       Chance d ->
         do (m, t) <- fromDist d
            put state { _current = t,
-                       _events = ChanceEvent m : _events state }
+                       _transcript = ChanceEvent m : _transcript state }
       Payoff vs ->
-        let events = PayoffEvent vs : _events state
+        let events = PayoffEvent vs : _transcript state
             summary = summarize (_game state) events
             history = ByGame $ (events, summary) : toList (_history state)
         in put state { _current = gameTree (_game state),
-                       _events = [],
+                       _transcript = [],
                        _history = history }
 
 once :: (Game g, Eq (Move g), Show (Move g)) => ExecM g ()

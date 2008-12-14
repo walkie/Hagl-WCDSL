@@ -20,8 +20,8 @@ instance Eq mv => Game (Normal mv) where
   
   gameTree g = ply (numPlayers g) []
     where ply :: Int -> [mv] -> GameTree (Normal mv) -- GHC "panics" without this type def...
-          ply 0 ms = payoff (g `pays` ByPlayer ms)
-          ply p ms = decision p [(m, ply (p-1) (m:ms)) | m <- moves g p]
+          ply 0 ms = pay (g `pays` ByPlayer ms)
+          ply p ms = decide p [(m, ply (p-1) (m:ms)) | m <- moves g p]
 
 
 type Profile mv = ByPlayer mv -- pure strategy profile
@@ -85,7 +85,9 @@ dominant g = nash g `intersect` pareto g
 
 -- Examples
 
+{-
 data CD = C | D deriving (Eq, Show)
 
 pd   = matrix [C,D] [[2,2],[0,3],[3,0],[1,1]]
 stag = matrix [C,D] [[3,3],[0,2],[2,0],[1,1]]
+-}

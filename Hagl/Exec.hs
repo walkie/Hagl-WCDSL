@@ -13,14 +13,15 @@ import Hagl.Lists
 
 -- Game Execution State
 data Exec g = Exec {
-  _game    :: g,          -- game definition
-  _current :: GameTree g, -- the current location in the game tree
-  _players :: [Player g], -- players active in game
-  _events  :: [Event g],  -- events so far this iteration (newest at head)
-  _history :: History g   -- a summary of each iteration
+  _game       :: g,            -- game definition
+  _current    :: GameTree g,   -- the current location in the game tree
+  _players    :: [Player g],   -- players active in game
+  _transcript :: Transcript g, -- events so far this iteration (newest at head)
+  _history    :: History g     -- a summary of each iteration
 }
 
 -- History
+type Transcript g = [Event g]
 type History g = ByGame ([Event g], Summary g)
 type Summary g = (ByPlayer [Move g], ByPlayer Float)
 
@@ -59,7 +60,7 @@ data ExecM    g a   = ExecM  { unE :: StateT (Exec g) IO a }
 data StratM   g s a = StratM { unS :: StateT s (ExecM g) a }
 type Strategy g s   = StratM g s (Move g)
 
-class Monad m => GameMonad m g | m -> g where
+class Monad m => GameM m g | m -> g where
   getExec :: m (Exec g)
 
 update :: MonadState s m => (s -> s) -> m s
@@ -77,7 +78,7 @@ instance MonadState (Exec g) (ExecM g) where
 instance MonadIO (ExecM g) where
   liftIO = ExecM . liftIO
 
-instance GameMonad (ExecM g) g where
+instance GameM (ExecM g) g where
   getExec = ExecM get
 
 -- StratM instances
@@ -92,5 +93,5 @@ instance MonadState s (StratM g s) where
 instance MonadIO (StratM g s) where
   liftIO = StratM . liftIO
 
-instance GameMonad (StratM g s) g where
+instance GameM (StratM g s) g where
   getExec = StratM (lift getExec)

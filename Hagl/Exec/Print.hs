@@ -1,13 +1,17 @@
-module Game.Execution.Print where
+{-# OPTIONS_GHC -fglasgow-exts #-}
+
+module Hagl.Exec.Print where
 
 import Control.Monad.State
 import Data.List
-import Game.Definition
-import Game.Execution
-import Game.Execution.Util
-import Game.Strategy
-import Game.Strategy.Accessor
-import Game.Strategy.Selector
+
+import Hagl.Exec
+import Hagl.Exec.Util
+import Hagl.Game
+import Hagl.Lists
+import Hagl.Strategy
+import Hagl.Strategy.Accessor
+import Hagl.Strategy.Selector
 
 ------------------------
 -- Printing Functions --
@@ -25,11 +29,11 @@ printStr = liftIO . putStr
 printStrLn :: MonadIO m => String -> m ()
 printStrLn = liftIO . putStrLn
 
-printTranscript :: (MonadIO m, GameMonad m mv, Show mv) => m ()
+printTranscript :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printTranscript = do n <- numGames
                      sequence_ $ map printTranscriptOfGame [1..n]
 
-printTranscriptOfGame :: (MonadIO m, GameMonad m mv, Show mv) => Int -> m ()
+printTranscriptOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printTranscriptOfGame n =
     do ByGame ts <- transcripts
        ps <- players
@@ -40,11 +44,11 @@ printTranscriptOfGame n =
            event (PayoffEvent vs) = "  Payoff: " ++ show vs
         in printStr $ unlines $ map event t
 
-printSummaries :: (MonadIO m, GameMonad m mv, Show mv) => m ()
+printSummaries :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printSummaries = do n <- numGames
                     sequence_ $ map printSummaryOfGame [1..n]
 
-printSummaryOfGame :: (MonadIO m, GameMonad m mv, Show mv) => Int -> m ()
+printSummaryOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printSummaryOfGame n = 
     do ByGame ss <- summaries
        ps <- players
@@ -53,7 +57,7 @@ printSummaryOfGame n =
         in do printStr $ unlines ["  "++show p++" moves: "++show (reverse ms) | (p,ms) <- zip ps mss]
               printStrLn $ "  Score: "++show vs
 
-printScore :: (MonadIO m, GameMonad m mv, Show mv) => m ()
+printScore :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printScore = do s <- liftM2 scoreString players (our score)
                 printStrLn "Score:"
                 printStr =<< liftM2 scoreString players (our score)

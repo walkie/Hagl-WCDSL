@@ -1,47 +1,45 @@
+{-# OPTIONS_GHC -fglasgow-exts #-}
 
--------------------------
--- Game Tree Traversal --
--------------------------
+module Hagl.Game.Extensive where
 
-type GameTree mv s = Tree (Action mv s)
+import Hagl.Lists
+import Hagl.Game
 
-tree :: Game mv d s -> GameTree mv s
-tree g@(Game _ _ _ s) = t s
-  where t s = Node (next g s) (map t (children g s))
+type Tree mv = GameTree (Extensive mv)
 
--- The moves that are available from this node.
-availMoves :: Game mv d s -> s -> [mv]
-availMoves g s = case next g s of
-    (Decision _ f) -> [m | (m,_)   <- f]
-    (Chance f)     -> [m | (_,m,_) <- f]
-    _ -> []
+data Extensive mv = Extensive Int (Tree mv -> Info (Extensive mv)) (Tree mv) 
 
--- The immediate children of a node.
-children :: Game mv d s -> s -> [s]
-children g s = case next g s of
-    (Decision _ f) -> [s' | (_,s')   <- f]
-    (Chance f)     -> [s' | (_,_,s') <- f]
-    _ -> []
+instance Eq mv => Game (Extensive mv) where
 
--- Nodes in BFS order.
-bfs :: Game mv d s -> s -> [s]
-bfs g s = let b [] = []
-              b ss = ss ++ b (concatMap (children g) ss)
-          in b [s]
+  type Move (Extensive mv) = mv
+  type State (Extensive mv) = ()
 
--- Nodes DFS order.
-dfs :: Game mv d s -> s -> [s]
-dfs g s = s : concatMap (dfs g) (children g s)
+  numPlayers (Extensive n _ _) = n
+  info       (Extensive _ i _) = i
+  gameTree   (Extensive _ _ t) = t
 
--- Game tree as a Data.Tree structure.
-stateTree :: Game mv d s -> s -> Tree s
-stateTree g s = Node s $ map (stateTree g) (children g s)
+-- Construct a perfect information game from a finite GameTree.
+extensive :: GameTree (Extensive mv) -> Extensive mv
+extensive t = Extensive (maxPlayer t) Perfect t
 
+-- Construct a decision node with only one option.
+player :: PlayerIx -> (mv, Tree mv) -> Tree mv
+player i e = Node () (Decision i [e])
 
-instance (Show mv) => Show (Game mv d s) where
-  show g = condense $ drawTree $ f "" (next g (initialState g))
-    where f p (Decision i ts) = Node (p ++ "Player " ++ show i) [f (show m ++ " -> ") (next g s) | (m, s) <- ts]
-          f p (Chance ts)     = Node (p ++ "Chance") [f (show m ++ "(" ++ show c ++ ") -> ") (next g s) | (c, m, s) <- ts]
-          f p (Payoff vs)     = Node (p ++ show vs) []
-          condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
-                       in unlines $ filter empty $ lines s
+-- Combines two game trees.
+(<+>) :: Tree mv -> Tree mv -> Tree mv
+(Node () t1) <+> (Node () t2) = Node () (t1 <++> t2)
+  where Decision a as <++> Decision b bs | a == b = Decision a (as ++ bs)
+        Chance as <++> Chance bs = Chance (as ++ bs)
+        Payoff as <++> Payoff bs = Payoff 
+          (ByPlayer (zipWith (+) (toList as) (toList bs)))
+
+-- Add a decision branch to a game tree.
+(<|>) :: Tree mv -> (mv, Tree mv) -> Tree mv
+(Node () (Decision i ms)) <|> m = Node () (Decision i (m:ms))
+
+instance Eq mv => Eq (Extensive mv) where
+  (Extensive n1 _ t1) == (Extensive n2 _ t2) = n1 == n2 && t1 == t2
+
+instance Show mv => Show (Extensive mv) where
+  show (Extensive _ _ t) = show t

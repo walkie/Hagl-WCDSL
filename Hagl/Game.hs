@@ -19,27 +19,25 @@ class Game g where
   type State g
   numPlayers :: g -> Int
   gameTree   :: g -> GameTree g
-  info       :: g -> Info g
+  info       :: g -> GameTree g -> Info g
 
 ------------------------
 -- Information Groups --
 ------------------------
 
-type Info g = GameTree g -> InfoGroup g
-
-data InfoGroup g = Perfect (GameTree g)
-                 | Imperfect [GameTree g]
-                 | NoInfo
+data Info g = Perfect (GameTree g)
+            | Imperfect [GameTree g]
+            | Simultaneous
 
 --
 -- Smart constructors for deriving information groups for classes of games.
 --
 
-perfect :: g -> Info g
+perfect :: g -> GameTree g -> Info g
 perfect _ = Perfect
 
-simultaneous :: g -> Info g
-simultaneous _ _ = NoInfo
+simultaneous :: g -> GameTree g -> Info g
+simultaneous _ _ = Simultaneous
 
 ----------------
 -- Game Trees --
@@ -56,24 +54,39 @@ data NodeType g = Decision PlayerIx [Edge g] -- decision made by a player
 -- Smart constructors for defining stateless game trees.
 --
 
-decision :: State g ~ () => PlayerIx -> [Edge g] -> GameTree g
-decision p = Node () . Decision p
+decide :: State g ~ () => PlayerIx -> [Edge g] -> GameTree g
+decide p = Node () . Decision p
 
 chance :: State g ~ () => Dist (Edge g) -> GameTree g
 chance = Node () . Chance
 
-payoff :: State g ~ () => Payoff -> GameTree g
-payoff = Node () . Payoff
+pay :: State g ~ () => Payoff -> GameTree g
+pay = Node () . Payoff
+
+--
+-- Smart constructors for defining payoffs.
+--
+
+-- Payoff where player w wins (1) and all other players, out of np, lose (-1).
+winner :: Int -> PlayerIx -> Payoff
+winner np w = ByPlayer $ replicate (w-1) (-1) ++ (fromIntegral np - 1) : replicate (np - w) (-1)
+
+-- Payoff where player w loses (-1) and all other players, out of np, win (1).
+loser :: Int -> PlayerIx -> Payoff
+loser np l = ByPlayer $ replicate (l-1) 1 ++ (1 - fromIntegral np) : replicate (np - l) 1
+
+tie :: Int -> Payoff
+tie np = ByPlayer $ replicate np 0
 
 --
 -- Functions for traversing game trees.
 --
 
 -- The moves available from a node.
-availMoves :: GameTree g -> [Move g]
-availMoves (Node _ (Decision _ es)) = [m | (m,_) <- es]
-availMoves (Node _ (Chance d)) = [m | (_,(m,_)) <- d]
-availMoves _ = []
+movesFrom :: GameTree g -> [Move g]
+movesFrom (Node _ (Decision _ es)) = [m | (m,_) <- es]
+movesFrom (Node _ (Chance d)) = [m | (_,(m,_)) <- d]
+movesFrom _ = []
 
 -- The immediate children of a node.
 children :: GameTree g -> [GameTree g]
@@ -91,16 +104,22 @@ bfs t = let b [] = []
 dfs :: GameTree g -> [GameTree g]
 dfs t = t : concatMap dfs (children t)
 
+-- The highest numbered player in this finite game tree.
+maxPlayer :: GameTree g -> Int
+maxPlayer t = foldl1 max $ map player (dfs t)
+  where player (Node _ (Decision p _)) = p
+        player _ = 0
+
 ---------------
 -- Instances --
 ---------------
 
 -- Eq
 
-instance (Eq (Move g), Eq (State g)) => Eq (InfoGroup g) where
+instance (Eq (Move g), Eq (State g)) => Eq (Info g) where
   (Perfect t1) == (Perfect t2) = t1 == t2
   (Imperfect t1) == (Imperfect t2) = t1 == t2
-  NoInfo == NoInfo = True
+  Simultaneous == Simultaneous = True
   _ == _ = False
 
 instance (Eq (Move g), Eq (State g)) => Eq (GameTree g) where
@@ -114,10 +133,10 @@ instance (Eq (Move g), Eq (State g)) => Eq (NodeType g) where
 
 -- Show
 
-instance Show (Move g) => Show (InfoGroup g) where
+instance Show (Move g) => Show (Info g) where
   show (Perfect t) = show t
   show (Imperfect ts) = unlines $ intersperse "*** OR ***" (map show ts)
-  show NoInfo = "Cannot show this location in the game tree."
+  show Simultaneous = "Cannot show this location in the game tree."
 
 instance Show (Move g) => Show (GameTree g) where
   show g = condense $ Tree.drawTree $ t "" g
@@ -135,6 +154,10 @@ instance Show (Move g) => Show (GameTree g) where
 -- Game tree as a Data.Tree structure.
 asTree :: Game g mv => g -> Tree g
 asTree g = Node g $ map asTree (children g)
+
+-- Game tree as a Data.Tree structure.
+stateTree :: Game mv d s -> s -> Tree s
+stateTree g s = Node s $ map (stateTree g) (children g s)
 
 -- The highest number player from this *finite* game tree.
 maxPlayer :: Game g mv => g -> PlayerIx

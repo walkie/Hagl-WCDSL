@@ -1,10 +1,23 @@
-{-# OPTIONS_GHC -fno-monomorphism-restriction #-}
+{-# OPTIONS_GHC -fglasgow-exts #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
+{-
 import Data.List
 import Hagl
 
 import Control.Monad.State
 import Prelude hiding (print)
+-}
+
+import Hagl.Game
+import Hagl.Game.Normal
+import Hagl.Exec
+import Hagl.Exec.Run
+import Hagl.Exec.Print
+import Hagl.Exec.Tournament
+import Hagl.Strategy
+import Hagl.Strategy.Accessor
+import Hagl.Strategy.Selector
 
 ------------------------
 -- Prisoner's Dilemma --
@@ -27,6 +40,7 @@ rr = "Russian Roulette" `plays` mixed [(5, Cooperate), (1, Defect)]
 -- The famous Tit-for-Tat.
 titForTat = "Tit for Tat" `plays` (Cooperate `initiallyThen` his (prev move))
 
+{-
 stately = Player "Stately Alternator" Cooperate $
   do m <- get
      put $ if m == Cooperate then Defect else Cooperate
@@ -270,3 +284,4 @@ numMatches = do (Perfect loc) <- location
                 return (count loc)
   where count (Decision _ ((m,b):_)) = m + count b
         count (Payoff _) = 0
+        -}

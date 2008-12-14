@@ -1,63 +1,73 @@
-module Game.Strategy.Accessor where
+{-# OPTIONS_GHC -fglasgow-exts #-}
+
+module Hagl.Strategy.Accessor where
 
 import Control.Monad
 import Data.List
-import Game.Definition
-import Game.Execution
-import Game.Execution.Util
+
+import Hagl.Exec
+import Hagl.Exec.Util
+import Hagl.Lists
+import Hagl.Game
 
 --------------------
 -- Data Accessors --
 --------------------
 
-game :: GameMonad m mv => m (Game mv)
-game = liftM _game getExecState
+game :: (Game g, GameM m g) => m g
+game = liftM _game getExec
 
-players :: GameMonad m mv => m [Player mv]
-players = liftM _players getExecState
+players :: (Game g, GameM m g) => m [Player g]
+players = liftM _players getExec
 
-location :: GameMonad m mv => m (InfoGroup mv)
-location = getExecState >>= \s -> return $ info (_game s) (_location s)
+location :: (Game g, GameM m g) => m (Info g)
+location = getExec >>= \s -> return $ info (_game s) (_current s)
 
-transcript :: GameMonad m mv => m (Transcript mv)
-transcript = liftM _transcript getExecState
+transcript :: (Game g, GameM m g) => m (Transcript g)
+transcript = liftM _transcript getExec
 
-history :: GameMonad m mv => m (History mv)
-history = liftM _history getExecState
+history :: (Game g, GameM m g) => m (History g)
+history = liftM _history getExec
 
-numGames :: GameMonad m mv => m Int
-numGames = liftM (length . asList) history
+numGames :: (Game g, GameM m g) => m Int
+numGames = liftM (length . toList) history
+
+availMoves :: (Game g, GameM m g, Eq (Move g)) => m [Move g]
+availMoves = location >>= \l -> case l of
+  Perfect t -> return $ movesFrom t
+  Imperfect ts -> return $ foldl1 intersect (map movesFrom ts)
+  Simultaneous -> liftM (movesFrom . _current) getExec
 
 -- True if this is the first iteration in this execution instance.
-isFirstGame :: GameMonad m mv => m Bool
-isFirstGame = liftM (null . asList) history
+isFirstGame :: (Game g, GameM m g) => m Bool
+isFirstGame = liftM (null . toList) history
 
 -- Transcript of each game.
-transcripts :: GameMonad m mv => m (ByGame (Transcript mv))
+transcripts :: (Game g, GameM m g) => m (ByGame (Transcript g))
 transcripts = do t <- transcript
                  h <- history
-                 return (ByGame (t : (fst . unzip . asList) h))
+                 return (ByGame (t : (fst . unzip . toList) h))
 
 -- Summary of each game.
-summaries :: GameMonad m mv => m (ByGame (Summary mv))
+summaries :: (Game g, GameM m g) => m (ByGame (Summary g))
 summaries = do g <- game
                t <- transcript
                h <- history
-               return (ByGame (summarize g t : (snd . unzip . asList) h))
+               return (ByGame (summarize g t : (snd . unzip . toList) h))
 
 -- All moves made by each player in each game.
-moves :: GameMonad m mv => m (ByGame (ByPlayer [mv]))
-moves = liftM (ByGame . fst . unzip . asList) summaries
+moves :: (Game g, GameM m g) => m (ByGame (ByPlayer [Move g]))
+moves = liftM (ByGame . fst . unzip . toList) summaries
 
 -- The last move by each player in each game.
-move :: GameMonad m mv => m (ByGame (ByPlayer mv))
-move = liftM (ByGame . map (ByPlayer . map head) . asList2) moves
+move :: (Game g, GameM m g) => m (ByGame (ByPlayer (Move g)))
+move = liftM (ByGame . map (ByPlayer . map head) . toList2) moves
 
--- The total payoff for each player for each game.
-payoff :: GameMonad m mv => m (ByGame (ByPlayer Float))
-payoff = liftM (ByGame . snd . unzip . asList) summaries
+-- The payoff for each player for each game.
+payoff :: (Game g, GameM m g) => m (ByGame (ByPlayer Float))
+payoff = liftM (ByGame . snd . unzip . toList) summaries
 
 -- The current score of each player.
-score :: GameMonad m mv => m (ByPlayer Float)
-score = liftM (ByPlayer . map sum . transpose . asList2) payoff
+score :: (Game g, GameM m g) => m (ByPlayer Float)
+score = liftM (ByPlayer . map sum . transpose . toList2) payoff
 
