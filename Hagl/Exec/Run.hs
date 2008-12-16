@@ -5,15 +5,34 @@ module Hagl.Exec.Run where
 import Control.Monad.State
 import Data.Maybe
 
-import Hagl.Exec
-import Hagl.Exec.Util
-import Hagl.Game
 import Hagl.Lists
+import Hagl.Types
+import Hagl.Strategy.Accessor
 
 --------------------
 -- Game Execution --
 --------------------
 
+conclude :: Game g => Payoff -> ExecM g ()
+conclude p = 
+  do e <- getExec
+     n <- numPlayers
+     t <- transcript
+     let s = (ByPlayer (map (forp t) [1..n]), p)
+      in put e { _gameState = initState (_game e),
+                 _transcript = [],
+                 _history = ByGame ((t,s) : toList (_history e)) }
+  where forp t i = [mv | (mi, mv) <- t, mi == Just i]
+
+once :: (Game g) => ExecM g ()
+once = do p <- runGame
+          conclude p
+
+times :: (Game g) => Int -> ExecM g ()
+times 0 = return ()
+times n = once >> times (n-1)
+
+{-
 evalGame :: Game g => g -> [Player g] -> ExecM g a -> IO a
 evalGame g ps f = evalStateT (unE f) (initState g ps)
 
@@ -62,3 +81,4 @@ times n = once >> times (n-1)
 
 initState :: Game g => g -> [Player g] -> Exec g
 initState g ps = Exec g (gameTree g) ps [] (ByGame [])
+-}

@@ -1,11 +1,11 @@
 module Hagl.Exec.Util where
 
 import Control.Monad.State
+import Data.Maybe
 import System.Random
 
-import Hagl.Exec
-import Hagl.Game
 import Hagl.Lists
+import Hagl.Types
 
 fromDist :: MonadIO m => Dist a -> m a
 fromDist d = let l = expandDist d
@@ -19,14 +19,3 @@ randomIndex :: MonadIO m => [a] -> m Int
 randomIndex as = liftIO $ getStdRandom $ randomR (0, length as - 1)
 
 -- TODO this could be cleaned up
-summarize :: Game g => g -> [Event g] -> Summary g
-summarize g t = 
-    let np = numPlayers g
-        addmove i a as = take i as ++ ((a:(as!!i)) : drop i as)
-        payoffs (PayoffEvent vs : es) = zipWith (+) (toList vs) (payoffs es)
-        payoffs (e : es) = payoffs es
-        payoffs [] = take np (repeat 0)
-        moves (DecisionEvent i m : es) = addmove (i-1) m (moves es)
-        moves (e : es) = moves es
-        moves [] = take np (repeat [])
-    in (ByPlayer (moves t), ByPlayer (payoffs t))

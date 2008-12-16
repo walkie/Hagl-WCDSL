@@ -5,11 +5,14 @@ module Hagl.Game.Normal where
 import Data.List
 import Data.Maybe
 
+import Hagl.Strategy.Accessor hiding (moves, numPlayers)
 import Hagl.Lists
+import Hagl.Types
 import Hagl.Game
 
 data Normal mv = Normal Int (ByPlayer [mv]) [Payoff] deriving (Eq, Show)
 
+{-
 instance Eq mv => Game (Normal mv) where
 
   type Move (Normal mv) = mv
@@ -22,9 +25,20 @@ instance Eq mv => Game (Normal mv) where
     where ply :: Int -> [mv] -> GameTree (Normal mv) -- GHC "panics" without this type def...
           ply 0 ms = pay (g `pays` ByPlayer ms)
           ply p ms = decide p [(m, ply (p-1) (m:ms)) | m <- moves g p]
+-}
 
+instance Eq mv => Game (Normal mv) where
+  type Move (Normal mv) = mv
+  type State (Normal mv) = ()
+  initState _ = ()
+  runGame = do g <- game
+               ms <- allPlayers decide
+               return (g `pays` ms)
 
 type Profile mv = ByPlayer mv -- pure strategy profile
+
+numPlayers :: Normal mv -> Int
+numPlayers (Normal np _ _) = np
 
 pays :: Eq mv => Normal mv -> Profile mv -> Payoff
 pays (Normal _ mss ps) ms = fromJust (lookup ms (zip (dcross mss) ps))
@@ -44,13 +58,23 @@ profiles (Normal _ mss _) = dcross mss
 normal :: Eq mv => Int -> [[mv]] -> [[Float]] -> Normal mv
 normal np mss vs = Normal np (ByPlayer mss) (map ByPlayer vs)
 
--- Construct a two-player Normal-Form game, where each player has the same moves.
-matrix :: Eq mv => [mv] -> [[Float]] -> Normal mv
-matrix ms = normal 2 [ms,ms]
+-- Construct a two-player game.
+bimatrix :: Eq mv => [[mv]] -> [[Float]] -> Normal mv
+bimatrix = normal 2
 
--- Construct a two-player Zero-Sum game, where each player has the same moves.
-zerosum :: Eq mv => [mv] -> [Float] -> Normal mv
-zerosum ms vs = matrix ms [[v, -v] | v <- vs]
+-- Construct a two-player, zero-sum game.
+matrix :: Eq mv => [[mv]] -> [Float] -> Normal mv
+matrix mss vs = bimatrix mss (zerosum vs)
+
+-- Construct a two-player, symmetric game.
+symmetric :: Eq mv => [mv] -> [Float] -> Normal mv
+symmetric ms vs = normal 2 [ms, ms] vs'
+  where sym = concat (transpose (chunk (length ms) vs))
+        vs' = zipWith (\a b -> [a,b]) vs sym
+
+-- Construct a zero-sum payoff grid.
+zerosum :: [Float] -> [[Float]]
+zerosum vs = [[v, -v] | v <- vs]
 
 ---------------------------
 -- Equilibrium Solutions --
@@ -73,9 +97,9 @@ pareto g = [s | s <- profiles g, opt s]
                        p' = toList (g `pays` s')
                    in or (zipWith (>) p' p) && and (zipWith (>=) p' p)
 
--- Finds all payoff dominant solutions.
-dominant :: Eq mv => Normal mv -> [Profile mv]
-dominant g = nash g `intersect` pareto g
+-- Finds all pareto optimal equilibriums.
+paretoNash :: Eq mv => Normal mv -> [Profile mv]
+paretoNash g = pareto g `intersect` nash g
 
 ---------------------
 -- Pretty Printing --
@@ -85,9 +109,7 @@ dominant g = nash g `intersect` pareto g
 
 -- Examples
 
-{-
 data CD = C | D deriving (Eq, Show)
 
-pd   = matrix [C,D] [[2,2],[0,3],[3,0],[1,1]]
-stag = matrix [C,D] [[3,3],[0,2],[2,0],[1,1]]
--}
+pd   = symmetric [C,D] [2, 0, 3, 1]
+stag = symmetric [C,D] [3, 0, 2, 1]
