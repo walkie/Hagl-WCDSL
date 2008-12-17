@@ -2,7 +2,7 @@
 
 module Hagl.Game where
 
-import Control.Monad.State
+import Control.Monad.State hiding (State)
 
 import Hagl.Lists
 import Hagl.Types
@@ -50,7 +50,28 @@ decide i = do playersTurn i
 
 allPlayers :: Game g => (PlayerIx -> ExecM g a) -> ExecM g (ByPlayer a)
 allPlayers f = do n <- numPlayers
-                  liftM ByPlayer (sequence (map f [1..n]))
+                  liftM ByPlayer (mapM f [1..n])
+
+putGameState :: Game g => State g -> ExecM g (State g)
+putGameState s = getExec >>= \e -> put e { _gameState = s } >> return s
+
+updateGameState :: Game g => (State g -> State g) -> ExecM g (State g)
+updateGameState f = gameState >>= \s -> putGameState (f s)
+
+-- Payoff where player w wins (1) and all other players, out of np, lose (-1).
+winner :: Int -> PlayerIx -> Payoff
+winner np w = ByPlayer $ replicate (w-1) (-1) ++ (fromIntegral np - 1) : replicate (np - w) (-1)
+
+-- Payoff where player w loses (-1) and all other players, out of np, win (1).
+loser :: Int -> PlayerIx -> Payoff
+loser np l = ByPlayer $ replicate (l-1) 1 ++ (1 - fromIntegral np) : replicate (np - l) 1
+
+tie :: Int -> Payoff
+tie np = ByPlayer $ replicate np 0
+
+nextPlayer :: Int -> PlayerIx -> PlayerIx
+nextPlayer np p | p == np   = 1
+                | otherwise = p + 1
 
 {- Goal: Normal form games
 
