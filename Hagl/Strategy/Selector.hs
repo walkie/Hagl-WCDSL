@@ -3,8 +3,9 @@ module Hagl.Strategy.Selector where
 import Control.Monad
 import Data.List
 
-import Hagl.Exec
+--import Hagl.Exec
 import Hagl.Lists
+import Hagl.Types
 import Hagl.Game
 import Hagl.Strategy.Accessor
 
@@ -19,19 +20,19 @@ each f xs = (sequence . map f . map return) =<< xs
 -- ByPlayer Selection --
 
 -- The index of the current player.
-myIx :: (Game g, GameM m g) => m PlayerIx
-myIx = do (Node _ (Decision p _)) <- _exactLoc
-          return (p-1)
+--myIx :: (Game g, GameM m g) => m PlayerIx
+--myIx = do (Node _ (Decision p _)) <- _exactLoc
+          --return (p-1)
 
 my :: (Game g, GameM m g) => m (ByPlayer a) -> m a
 my x = liftM2 (!!) (liftM toList x) myIx
 
 -- Selects the next player's x.
 his :: (Game g, GameM m g) => m (ByPlayer a) -> m a
-his x = do ByPlayer as <- x
+his x = do as <- x
            i <- myIx
-           g <- game
-           return $ as !! ((i+1) `mod` numPlayers g)
+           np <- numPlayers
+           return $ as `forPlayer` nextPlayer np i
 
 her :: (Game g, GameM m g) => m (ByPlayer a) -> m a
 her = his
@@ -44,9 +45,9 @@ their x = do ByPlayer as <- x
              i <- myIx
              return $ (take i as) ++ (drop (i+1) as)
 
+-- This syntax should be changed to match forPlayer (name change would be nice too)
 playern :: (Game g, GameM m g) => PlayerIx -> m (ByPlayer a) -> m a
-playern i x = do ByPlayer as <- x
-                 return $ as !! (i-1)
+playern i = liftM (`forPlayer` i)
 
 -- ByGame Selection --
 
@@ -74,5 +75,5 @@ gamen i x = do ByGame as <- x
 -- Utility Functions --
 -----------------------
 
-_exactLoc :: (Game g, GameM m g) => m (GameTree g)
-_exactLoc = liftM _current getExec
+--_exactLoc :: (Game g, GameM m g) => m (GameTree g)
+--_exactLoc = liftM _current getExec

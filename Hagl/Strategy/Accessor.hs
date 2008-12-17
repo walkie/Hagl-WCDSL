@@ -38,7 +38,7 @@ myIx = liftM fromJust playerIx
 numGames :: (Game g, GameM m g) => m Int
 numGames = liftM (length . toList) history
 
-numPlayers :: Game g => ExecM g Int
+numPlayers :: (Game g, GameM m g) => m Int
 numPlayers = liftM length players
 
 {-

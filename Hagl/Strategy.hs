@@ -8,12 +8,13 @@ import Data.List
 import Data.Maybe
 
 import Hagl.Game
-import Hagl.Exec
+--import Hagl.Exec
 import Hagl.Exec.Util
 import Hagl.Lists
+import Hagl.Types
 import Hagl.Strategy.Accessor
 import Hagl.Strategy.Selector
-import Hagl.Util
+--import Hagl.Util
 
 -----------------------
 -- Common Strategies --
@@ -28,8 +29,8 @@ pure :: Move g -> Strategy g s
 pure = return
 
 -- Pick a move from the list of available moves randomly.
-randomly :: (Game g, Eq (Move g)) => Strategy g s
-randomly = randomlyFrom =<< availMoves
+--randomly :: (Game g, Eq (Move g)) => Strategy g s
+--randomly = randomlyFrom =<< availMoves
 
 -- Pick a move randomly from a list.
 randomlyFrom :: [Move g] -> Strategy g s
@@ -67,6 +68,7 @@ initiallyThen a b = atFirst (return a) (finally b)
 
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
 -- perfect information and no Chance nodes.
+{-
 minimax :: Game g => Strategy g s
 minimax = myIx >>= \me -> location >>= \loc ->
   let isMe = (me + 1 ==)
@@ -83,6 +85,7 @@ minimax = myIx >>= \me -> location >>= \loc ->
        Perfect n -> 
          let vals = map (val (-infinity) infinity) (children n)
          in return $ movesFrom n !! maxIndex vals
+-}
 
 infinity :: Float
 infinity = 1/0
