@@ -2,96 +2,112 @@
 
 module Hagl.Exec where
 
-import Control.Monad.State
+import Control.Monad
+import Control.Monad.State hiding (State)
+import Data.Maybe
+import Data.List
+import System.Random
 
-import Hagl.Game
-import Hagl.Lists
+import Hagl.Core
 
----------------------
--- Execution State --
----------------------
+--------------------
+-- Data Accessors --
+--------------------
 
--- Game Execution State
-data Exec g = Exec {
-  _game       :: g,            -- game definition
-  _current    :: GameTree g,   -- the current location in the game tree
-  _players    :: [Player g],   -- players active in game
-  _transcript :: Transcript g, -- events so far this iteration (newest at head)
-  _history    :: History g     -- a summary of each iteration
-}
+--
+-- Core accessors
+--
 
--- History
-type Transcript g = [Event g]
-type History g = ByGame ([Event g], Summary g)
-type Summary g = (ByPlayer [Move g], ByPlayer Float)
+game :: (Game g, GameM m g) => m g
+game = liftM _game getExec
 
-data Event g = DecisionEvent PlayerIx (Move g)
-             | ChanceEvent (Move g)
-             | PayoffEvent Payoff
+players :: (Game g, GameM m g) => m [Player g]
+players = liftM _players getExec
 
--------------
--- Players --
--------------
+gameState :: (Game g, GameM m g) => m (State g)
+gameState = liftM _gameState getExec
 
-type Name = String
+playerIx :: (Game g, GameM m g) => m (Maybe PlayerIx)
+playerIx = liftM _playerIx getExec
 
-data Player g = forall s.
-  Player {
-    name     :: Name,
-    state    :: s,
-    strategy :: Strategy g s
-  }
+transcript :: (Game g, GameM m g) => m (Transcript g)
+transcript = liftM _transcript getExec
 
-plays :: Name -> Strategy g () -> Player g
-plays n s = Player n () s
+history :: (Game g, GameM m g) => m (History g)
+history = liftM _history getExec
 
-instance Show (Player g) where
-  show = name
-instance Eq (Player g) where
-  a == b = name a == name b
-instance Ord (Player g) where
-  compare a b = compare (name a) (name b)
+--
+-- Accessors that do some processing
+--
 
------------------------------------
--- Execution and Strategy Monads --
------------------------------------
+myIx :: (Game g, GameM m g) => m PlayerIx
+myIx = liftM (fromMaybe (error "playerIx not set")) playerIx
 
-data ExecM    g a   = ExecM  { unE :: StateT (Exec g) IO a }
-data StratM   g s a = StratM { unS :: StateT s (ExecM g) a }
-type Strategy g s   = StratM g s (Move g)
+numGames :: (Game g, GameM m g) => m Int
+numGames = liftM (length . toList) history
 
-class Monad m => GameM m g | m -> g where
-  getExec :: m (Exec g)
+numPlayers :: (Game g, GameM m g) => m Int
+numPlayers = liftM length players
 
-update :: MonadState s m => (s -> s) -> m s
-update f = modify f >> get
+-- True if this is the first iteration in this execution instance.
+isFirstGame :: (Game g, GameM m g) => m Bool
+isFirstGame = liftM (null . toList) history
 
--- ExecM instances
-instance Monad (ExecM g) where
-  return = ExecM . return
-  (ExecM x) >>= f = ExecM (x >>= unE . f)
+-- Transcript of each game.
+transcripts :: (Game g, GameM m g) => m (ByGame (Transcript g))
+transcripts = do h  <- history
+                 t' <- transcript
+                 return (ByGame (t' : [t | (t,_) <- toList h]))
 
-instance MonadState (Exec g) (ExecM g) where
-  get = ExecM get
-  put = ExecM . put
+-- Summary of each completed game.
+summaries :: (Game g, GameM m g) => m (ByGame (Summary g))
+summaries = do h <- history
+               return (ByGame [s | (_,s) <- toList h])
 
-instance MonadIO (ExecM g) where
-  liftIO = ExecM . liftIO
+-- All moves made by each player in each game (including the current one).
+moves :: (Game g, GameM m g) => m (ByGame (ByPlayer [Move g]))
+moves = do ss  <- summaries
+           ms' <- movesSoFar
+           let mss = [ms | (ms,_) <- toList ss]
+            in return (ByGame (ms':mss))
 
-instance GameM (ExecM g) g where
-  getExec = ExecM get
+-- The last move by each player in each game (including the current one, if applicable).
+move :: (Game g, GameM m g) => m (ByGame (ByPlayer (Move g)))
+move = liftM (ByGame . map (ByPlayer . map head) . toList2) moves
 
--- StratM instances
-instance Monad (StratM g s) where
-  return = StratM . return
-  (StratM x) >>= f = StratM (x >>= unS . f)
+-- The payoff for each player for each game.
+payoff :: (Game g, GameM m g) => m (ByGame Payoff)
+payoff = liftM (ByGame . snd . unzip . toList) summaries
 
-instance MonadState s (StratM g s) where
-  get = StratM get
-  put = StratM . put
+-- The current score of each player.
+score :: (Game g, GameM m g) => m Payoff
+score = liftM (ByPlayer . map sum . transpose . toList2) payoff
 
-instance MonadIO (StratM g s) where
-  liftIO = StratM . liftIO
+-- The moves so far this game, by player.
+movesSoFar :: (Game g, GameM m g) => m (ByPlayer [Move g])
+movesSoFar = do np <- numPlayers
+                t <- transcript
+                return (ByPlayer [forp t i | i <- [1..np]])
+  where forp t i = [mv | (mi,mv) <- t, mi == Just i]
 
-instance GameM (StratM g s) g where
-  getExec = StratM (lift getExec)
+--
+-- Functions that use the IO monad.
+--
+
+randomIndex :: MonadIO m => [a] -> m Int
+randomIndex as = liftIO $ randomRIO (0, length as - 1)
+
+-- Pick a move randomly from a list.
+randomlyFrom :: MonadIO m => [a] -> m a
+randomlyFrom as = liftM (as !!) (randomIndex as)
+
+fromDist :: MonadIO m => Dist a -> m a
+fromDist d = randomlyFrom (expandDist d)
+
+--
+-- Utility functions.
+--
+
+-- Generate a string showing a set of players' scores.
+scoreString :: [Player g] -> [Float] -> String 
+scoreString ps vs = unlines ["  "++show p++": "++show v | (p,v) <- zip ps vs]

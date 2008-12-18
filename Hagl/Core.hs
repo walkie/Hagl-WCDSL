@@ -129,7 +129,7 @@ data ByGame a = ByGame [a] deriving (Eq, Show)
 data ByPlayer a = ByPlayer [a] deriving (Eq, Show)
 
 forGame :: ByGame a -> Int -> a
-forGame (ByGame as) p = as !! (p-1)
+forGame (ByGame as) i = as !! (length as - i)
 
 forPlayer :: ByPlayer a -> Int -> a
 forPlayer (ByPlayer as) p = as !! (p-1)
@@ -149,6 +149,9 @@ dcross xss = map fromList (cross (toList xss))
 
 toList2 :: (DList f, DList g) => f (g a) -> [[a]]
 toList2 = map toList . toList
+
+dzipWith :: DList d => (a -> b -> c) -> d a -> d b -> d c
+dzipWith f as bs = fromList (zipWith f (toList as) (toList bs))
 
 -------------------
 -- Distributions --

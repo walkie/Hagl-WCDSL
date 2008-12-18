@@ -8,15 +8,20 @@ import Hagl
 import Control.Monad.State
 import Prelude hiding (print)
 -}
+import Control.Monad.State
+import Data.List
 
-import Hagl.Game
-import Hagl.Game.Normal
+import Hagl.Core
 import Hagl.Exec
 import Hagl.Exec.Run
 import Hagl.Exec.Print
-import Hagl.Exec.Tournament
+import Hagl.Game
+import Hagl.Game.Extensive
+import Hagl.Game.Normal
+import Hagl.GameTree
+import Hagl.Searchable
+--import Hagl.Exec.Tournament
 import Hagl.Strategy
-import Hagl.Strategy.Accessor
 import Hagl.Strategy.Selector
 
 ------------------------
@@ -26,7 +31,7 @@ import Hagl.Strategy.Selector
 -- Game definition
 data Dilemma = Cooperate | Defect deriving (Show, Eq)
 
-pd = matrix [Cooperate, Defect] [[2, 2], [0, 3], [3, 0], [1, 1]]
+pd = symmetric [Cooperate, Defect] [2, 0, 3, 1]
 
 -- Some simple players.
 fink = "Fink" `plays` pure Defect
@@ -34,13 +39,12 @@ mum = "Mum" `plays` pure Cooperate
 alt = "Alternator" `plays` periodic [Cooperate, Defect]
 dc = "(DC)*" `plays` periodic [Cooperate, Defect]
 ccd = "(CCD)*" `plays` periodic [Cooperate, Cooperate, Defect]
-randy = "Randy" `plays` randomly
+randy = "Randy" `plays` randomlyFrom [Cooperate, Defect]
 rr = "Russian Roulette" `plays` mixed [(5, Cooperate), (1, Defect)]
 
 -- The famous Tit-for-Tat.
 titForTat = "Tit for Tat" `plays` (Cooperate `initiallyThen` his (prev move))
 
-{-
 stately = Player "Stately Alternator" Cooperate $
   do m <- get
      put $ if m == Cooperate then Defect else Cooperate
@@ -122,9 +126,9 @@ preserver2 = "Preserver" `plays`
 
 data RPS = Rock | Paper | Scissors deriving (Enum, Eq, Show)
 
-rps = zerosum [Rock .. Scissors] [0,-1, 1,
-                                  1, 0,-1,
-                                 -1, 1, 0]
+rps = square [Rock .. Scissors] [0,-1, 1,
+                                 1, 0,-1,
+                                -1, 1, 0]
 
 -- Some simple players
 rocky = "Stalone" `plays` pure Rock
@@ -156,10 +160,10 @@ frequency = "Huckleberry" `plays`
 crisis = extensive start
   where ussr = player 1
         usa  = player 2
-        nukesInTurkey = Payoff [  -2,   1]
-        nukesInCuba   = Payoff [   1,  -2]
-        nuclearWar    = Payoff [-100,-100]
-        noNukes       = Payoff [   0,   0]
+        nukesInTurkey = Payoff (ByPlayer [  -2,   1])
+        nukesInCuba   = Payoff (ByPlayer [   1,  -2])
+        nuclearWar    = Payoff (ByPlayer [-100,-100])
+        noNukes       = Payoff (ByPlayer [   0,   0])
         start = ussr ("Send Missiles to Cuba", usaResponse) 
                  <|> ("Do Nothing", nukesInTurkey)
         usaResponse = usa ("Do Nothing", nukesInTurkey <+> nukesInCuba)
@@ -179,6 +183,7 @@ khrushchev = "Khrushchev" `plays`
 
 kennedy = "Kennedy" `plays` mixed [(2, "Blockade"), (1, "Air Strike")]
 
+{-
 {-
 nuclearWar    = Payoff [-100,-100]
 nukesInCuba   = Payoff [   1,  -1]

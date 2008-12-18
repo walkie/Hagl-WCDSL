@@ -5,10 +5,9 @@ module Hagl.Game.Normal where
 import Data.List
 import Data.Maybe
 
-import Hagl.Strategy.Accessor hiding (moves, numPlayers)
-import Hagl.Lists
-import Hagl.Types
+import Hagl.Core
 import Hagl.Game
+import Hagl.Exec hiding (numPlayers, moves)
 
 type Profile mv = ByPlayer mv -- pure strategy profile
 
@@ -46,8 +45,11 @@ symmetric ms vs = bimatrix [ms, ms] vs'
         vs' = zipWith (\a b -> [a,b]) vs sym
 
 -- Construct a two-player, zero-sum game.
-matrix :: Eq mv => [mv] -> [mv] -> [Float] -> Matrix mv
+matrix :: [mv] -> [mv] -> [Float] -> Matrix mv
 matrix = Matrix
+
+square :: [mv] -> [Float] -> Matrix mv
+square ms = Matrix ms ms
 
 ---------------------------
 -- Equilibrium Solutions --
@@ -148,10 +150,12 @@ instance Eq mv => Normal (Matrix mv) where
 
 -- Examples
 
+{-
 data CD = C | D deriving (Eq, Show)
 
 pd   = symmetric [C,D] [2, 0, 3, 1]
 stag = symmetric [C,D] [3, 0, 2, 1]
+-}
 m1 = matrix [1..4] [1..4] [4,3,2,5,-10,2,0,-1,7,5,2,3,0,8,-4,-5]
 m2 = matrix [1..3] [1..2] [2,-3,0,2,-5,10]
 

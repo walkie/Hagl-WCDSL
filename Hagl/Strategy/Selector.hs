@@ -3,11 +3,9 @@ module Hagl.Strategy.Selector where
 import Control.Monad
 import Data.List
 
---import Hagl.Exec
-import Hagl.Lists
-import Hagl.Types
+import Hagl.Core
+import Hagl.Exec
 import Hagl.Game
-import Hagl.Strategy.Accessor
 
 --------------------
 -- List Selectors --
@@ -67,9 +65,7 @@ prevn :: (Game g, GameM m g) => Int -> m (ByGame a) -> m [a]
 prevn n = liftM (take n . toList)
 
 gamen :: (Game g, GameM m g) => Int -> m (ByGame a) -> m a
-gamen i x = do ByGame as <- x
-               n <- numGames
-               return $ as !! (n-i)
+gamen i = liftM (`forGame` i)
 
 -----------------------
 -- Utility Functions --

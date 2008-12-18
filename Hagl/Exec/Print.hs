@@ -5,13 +5,12 @@ module Hagl.Exec.Print where
 import Control.Monad.State
 import Data.List
 
+import Hagl.Core
 import Hagl.Exec
-import Hagl.Exec.Util
-import Hagl.Game
-import Hagl.Lists
-import Hagl.Strategy
-import Hagl.Strategy.Accessor
+import Hagl.Exec.Run
+
 import Hagl.Strategy.Selector
+  -- gamen and playern need to be moved so we don't have to import this
 
 ------------------------
 -- Printing Functions --
@@ -35,14 +34,13 @@ printTranscript = do n <- numGames
 
 printTranscriptOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printTranscriptOfGame n =
-    do ByGame ts <- transcripts
-       ps <- players
-       printStrLn $ "Game "++show n++":"
-       let t = reverse $ ts !! (length ts - n)
-           event (DecisionEvent i m) = "  " ++ show (ps !! (i-1)) ++ "'s move: " ++ show m
-           event (ChanceEvent i) = "  Chance: " ++ show i
-           event (PayoffEvent vs) = "  Payoff: " ++ show vs
-        in printStr $ unlines $ map event t
+  do t <- gamen n transcripts
+     p <- gamen n payoff
+     ps <- players
+     printStrLn $ "Game "++show n++":"
+     let str (Just i, m) = "  " ++ show (ps !! (i-1)) ++ "'s move: " ++ show m
+         str (Nothing, m) = "  Chance: " ++ show m
+      in printStr $ unlines $ map str t ++ ["  Payoff: " ++ show (toList p)]
 
 printSummaries :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printSummaries = do n <- numGames
@@ -58,6 +56,7 @@ printSummaryOfGame n =
               printStrLn $ "  Score: "++show vs
 
 printScore :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
-printScore = do s <- liftM2 scoreString players (our score)
+printScore = do s  <- score
+                ps <- players
                 printStrLn "Score:"
-                printStr =<< liftM2 scoreString players (our score)
+                printStr (scoreString ps (toList s))
