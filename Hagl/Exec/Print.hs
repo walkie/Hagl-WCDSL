@@ -40,7 +40,7 @@ printTranscriptOfGame n =
      printStrLn $ "Game "++show n++":"
      let str (Just i, m) = "  " ++ show (ps !! (i-1)) ++ "'s move: " ++ show m
          str (Nothing, m) = "  Chance: " ++ show m
-      in printStr $ unlines $ map str t ++ ["  Payoff: " ++ show (toList p)]
+      in printStr $ unlines $ map str (reverse t) ++ ["  Payoff: " ++ show (toList p)]
 
 printSummaries :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printSummaries = do n <- numGames

@@ -48,6 +48,4 @@ treeStep = gameTreeM >>= \t -> case t of
   Payoff p -> return (Just p)
 
 runTree :: (Searchable g, Eq (Move g), Show (Move g)) => ExecM g Payoff
---runTree = treeStep >>= maybe runTree return
-runTree = do mp <- treeStep
-             maybe runTree return mp
+runTree = treeStep >>= maybe runTree return

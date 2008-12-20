@@ -27,6 +27,10 @@ instance Game TicTacToe where
                       b <- updateGameState (mark p m)
                       return (pay b)
 
+instance Searchable TicTacToe where
+  gameTree _ b = 
+  nextState _ s m = 
+
 xo 1 = X
 xo 2 = O
 

@@ -32,6 +32,7 @@ import Hagl.Strategy.Selector
 data Dilemma = Cooperate | Defect deriving (Show, Eq)
 
 pd = symmetric [Cooperate, Defect] [2, 0, 3, 1]
+stag = symmetric [Cooperate, Defect] [3, 0, 2, 1]
 
 -- Some simple players.
 fink = "Fink" `plays` pure Defect

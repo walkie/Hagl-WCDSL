@@ -88,11 +88,12 @@ setPlayerIx :: Game g => Maybe PlayerIx -> ExecM g ()
 setPlayerIx i = do exec <- getExec
                    put exec { _playerIx = i }
 
-putGameState :: Game g => State g -> ExecM g (State g)
-putGameState s = getExec >>= \e -> put e { _gameState = s } >> return s
+putGameState :: Game g => State g -> ExecM g ()
+putGameState s = getExec >>= \e -> put e { _gameState = s }
 
 updateGameState :: Game g => (State g -> State g) -> ExecM g (State g)
-updateGameState f = gameState >>= \s -> putGameState (f s)
+updateGameState f = gameState >>= \s -> 
+                    let s' = f s in putGameState s' >> return s'
 
 getPlayer :: Game g => PlayerIx -> ExecM g (Player g)
 getPlayer i = liftM (!! (i-1)) players
