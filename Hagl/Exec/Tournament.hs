@@ -5,21 +5,16 @@ module Hagl.Exec.Tournament where
 import Control.Monad.State
 import Data.List
 
-import Hagl.Game
+import Hagl.Core
 import Hagl.Exec
 import Hagl.Exec.Run
-import Hagl.Exec.Util
-import Hagl.Lists
-import Hagl.Strategy
-import Hagl.Strategy.Accessor
-import Hagl.Strategy.Selector
 
 -- Run a game with each successive collection of players. Aggregate the scores
 -- of all Players (based on name) and print the final scores.
 runGames :: (Game g, Show (Move g)) => g -> [[Player g]] -> ExecM g a -> IO ()
 runGames g pss f = 
     let unique = nub $ concat pss
-        run ps = evalGame g ps (f >> our score)
+        run ps = evalGame g ps (f >> liftM toList score)
     in sequence (map run pss) >>= \vss ->
          let pis = map (flip elemIndices (concat pss)) unique
              vs =  map (sum . map ((concat vss) !!)) pis
@@ -34,13 +29,15 @@ tournament g pss = runGames g (cross pss)
 
 -- Run a tournament where all orders of all players are played 
 -- (including against selves).
+-- TODO constant 2 should be replaced with some way to get number of players...
 fullRoundRobin :: (Game g, Show (Move g)) => g -> [Player g] -> ExecM g a -> IO ()
-fullRoundRobin g ps = tournament g (replicate (numPlayers g) ps)
+fullRoundRobin g ps = tournament g (replicate 2 ps)
 
 -- Run a tournament where all unique combinations of players are played 
 -- (including against selves).
+-- TODO constant 2 should be replaced with some way to get number of players...
 roundRobin :: (Game g, Show (Move g)) => g -> [Player g] -> ExecM g a -> IO ()
-roundRobin g ps = runGames g (ucross (replicate (numPlayers g) ps))
+roundRobin g ps = runGames g (ucross (replicate 2 ps))
 
 -----------------------
 -- Utility Functions --

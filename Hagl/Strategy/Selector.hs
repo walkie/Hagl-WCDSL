@@ -22,8 +22,9 @@ each f xs = (sequence . map f . map return) =<< xs
 --myIx = do (Node _ (Decision p _)) <- _exactLoc
           --return (p-1)
 
+-- TODO replace with forPlayerM
 my :: (Game g, GameM m g) => m (ByPlayer a) -> m a
-my x = liftM2 (!!) (liftM toList x) myIx
+my x = liftM2 (forPlayer) x myIx
 
 -- Selects the next player's x.
 his :: (Game g, GameM m g) => m (ByPlayer a) -> m a

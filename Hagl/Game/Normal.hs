@@ -12,7 +12,7 @@ import Hagl.Exec hiding (numPlayers, moves)
 type Profile mv = ByPlayer mv -- pure strategy profile
 
 -- A Normal form game (extends Game type class)
-class Game g => Normal g where
+class Game g => Norm g where
   numPlayers :: g -> Int
   pays       :: g -> Profile (Move g) -> Payoff
   moves      :: g -> PlayerIx -> [Move g]
@@ -21,7 +21,7 @@ class Game g => Normal g where
 -- Normal form game types.
 
 -- A general normal form game.
-data General mv = General Int (ByPlayer [mv]) [Payoff] deriving (Eq, Show)
+data Normal mv = Normal Int (ByPlayer [mv]) [Payoff] deriving (Eq, Show)
 
 -- A two-player, zero-sum game.
 data Matrix mv = Matrix [mv] [mv] [Float] deriving (Eq, Show)
@@ -31,15 +31,15 @@ data Matrix mv = Matrix [mv] [mv] [Float] deriving (Eq, Show)
 ------------------------
 
 -- Smart constructor to build from bare lists.
-normal :: Eq mv => Int -> [[mv]] -> [[Float]] -> General mv
-normal np mss vs = General np (ByPlayer mss) (map ByPlayer vs)
+normal :: Eq mv => Int -> [[mv]] -> [[Float]] -> Normal mv
+normal np mss vs = Normal np (ByPlayer mss) (map ByPlayer vs)
 
 -- Construct a two-player game.
-bimatrix :: Eq mv => [[mv]] -> [[Float]] -> General mv
+bimatrix :: Eq mv => [[mv]] -> [[Float]] -> Normal mv
 bimatrix = normal 2
 
 -- Construct a two-player, symmetric game.
-symmetric :: Eq mv => [mv] -> [Float] -> General mv
+symmetric :: Eq mv => [mv] -> [Float] -> Normal mv
 symmetric ms vs = bimatrix [ms, ms] vs'
   where sym = concat (transpose (chunk (length ms) vs))
         vs' = zipWith (\a b -> [a,b]) vs sym
@@ -56,7 +56,7 @@ square ms = Matrix ms ms
 ---------------------------
 
 -- Finds all pure nash equilibrium solutions..
-nash :: (Normal g, Eq (Move g)) => g -> [Profile (Move g)]
+nash :: (Norm g, Eq (Move g)) => g -> [Profile (Move g)]
 nash g = [s | s <- profiles g, stable s]
   where stable s = all (uni s) [1 .. numPlayers g]
         uni s p = and [g `pays` s `forPlayer` p >= 
@@ -65,7 +65,7 @@ nash g = [s | s <- profiles g, stable s]
                                 in [ByPlayer (h ++ e:t) | e <- moves g p]
 
 -- Finds all strong Pareto optimal solutions.
-pareto :: (Normal g, Eq (Move g)) => g -> [Profile (Move g)]
+pareto :: (Norm g, Eq (Move g)) => g -> [Profile (Move g)]
 pareto g = [s | s <- profiles g, opt s]
   where opt s = not (any (imp s) (profiles g))
         imp s s' = let p  = toList (g `pays` s)
@@ -73,7 +73,7 @@ pareto g = [s | s <- profiles g, opt s]
                    in or (zipWith (>) p' p) && and (zipWith (>=) p' p)
 
 -- Finds all pareto optimal, pure equilibriums.
-paretoNash :: (Normal g, Eq (Move g)) => g -> [Profile (Move g)]
+paretoNash :: (Norm g, Eq (Move g)) => g -> [Profile (Move g)]
 paretoNash g = pareto g `intersect` nash g
 
 -- Finds all saddle points of a matrix game.
@@ -94,16 +94,16 @@ col :: Matrix mv -> Int -> [Float]
 col (Matrix _ ms ps) i = transpose (chunk (length ms) ps) !! (i-1)
 
 -- The dimensions of the payoff matrix.
-dimensions :: Normal g => g -> [Int]
+dimensions :: Norm g => g -> [Int]
 dimensions g = let np = numPlayers g
                in [length (moves g i) | i <- [1..np]]
 
 -- A list of all pure strategy profiles.
-profiles :: Normal g => g -> [Profile (Move g)]
+profiles :: Norm g => g -> [Profile (Move g)]
 profiles g = let np = numPlayers g
              in dcross (fromList [(moves g i) | i <- [1..np]])
 
-runNormal :: Normal g => ExecM g Payoff
+runNormal :: Norm g => ExecM g Payoff
 runNormal = do g <- game
                ms <- allPlayers decide
                return (g `pays` ms)
@@ -119,16 +119,16 @@ zerosum vs = [fromList [v, -v] | v <- vs]
 -- Instance Declarations --
 ---------------------------
 
-instance Eq mv => Game (General mv) where
-  type Move (General mv) = mv
-  type State (General mv) = ()
+instance Eq mv => Game (Normal mv) where
+  type Move (Normal mv) = mv
+  type State (Normal mv) = ()
   initState _ = ()
   runGame = runNormal
 
-instance Eq mv => Normal (General mv) where
-  numPlayers (General np _ _) = np
-  pays (General _ mss ps) = lookupPay mss ps
-  moves (General _ mss _) p = mss `forPlayer` p
+instance Eq mv => Norm (Normal mv) where
+  numPlayers (Normal np _ _) = np
+  pays (Normal _ mss ps) = lookupPay mss ps
+  moves (Normal _ mss _) p = mss `forPlayer` p
 
 instance Eq mv => Game (Matrix mv) where
   type Move (Matrix mv) = mv
@@ -136,7 +136,7 @@ instance Eq mv => Game (Matrix mv) where
   initState _ = ()
   runGame = runNormal
 
-instance Eq mv => Normal (Matrix mv) where
+instance Eq mv => Norm (Matrix mv) where
   numPlayers _ = 2
   pays (Matrix ms ns ps) = lookupPay (fromList [ms,ns]) (zerosum ps)
   moves (Matrix ms _ _) 1 = ms
@@ -160,16 +160,16 @@ m1 = matrix [1..4] [1..4] [4,3,2,5,-10,2,0,-1,7,5,2,3,0,8,-4,-5]
 m2 = matrix [1..3] [1..2] [2,-3,0,2,-5,10]
 
 {-
-instance Eq mv => Game (Normal mv) where
+instance Eq mv => Game (Norm mv) where
 
-  type Move (Normal mv) = mv
-  type State (Normal mv) = ()
+  type Move (Norm mv) = mv
+  type State (Norm mv) = ()
 
   info = simultaneous
-  numPlayers (Normal np _ _) = np
+  numPlayers (Norm np _ _) = np
   
   gameTree g = ply (numPlayers g) []
-    where ply :: Int -> [mv] -> GameTree (Normal mv) -- GHC "panics" without this type def...
+    where ply :: Int -> [mv] -> GameTree (Norm mv) -- GHC "panics" without this type def...
           ply 0 ms = pay (g `pays` ByPlayer ms)
           ply p ms = decide p [(m, ply (p-1) (m:ms)) | m <- moves g p]
 -}

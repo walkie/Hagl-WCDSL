@@ -36,11 +36,11 @@ mixed :: [(Int, Move g)] -> Strategy g s
 mixed = randomlyFrom . expandDist
 
 -- Perform some pattern of moves periodically.
-periodic :: Game g => [Move g] -> Strategy g s
+periodic :: (Game g, Show (Move g)) => [Move g] -> Strategy g s
 periodic ms = numMoves >>= \n -> return $ ms !! mod n (length ms)
 
 -- Begin a list of strategies.
-atFirst :: Game g => Strategy g s -> [Strategy g s] -> Strategy g s
+atFirst :: (Game g, Show (Move g)) => Strategy g s -> [Strategy g s] -> Strategy g s
 atFirst s ss = numMoves >>= \n ->
     let l = length (s:ss)
     in (s:ss) !! (if n < l then n else l - 1)
@@ -54,11 +54,11 @@ finally :: Strategy g s -> [Strategy g s]
 finally = (:[])
 
 -- Play a strategy for the first move, then another strategy thereafter.
-atFirstThen :: Game g => Strategy g s -> Strategy g s -> Strategy g s
+atFirstThen :: (Game g, Show (Move g)) => Strategy g s -> Strategy g s -> Strategy g s
 atFirstThen a b = atFirst a (finally b)
 
 -- Play an initial move, then another strategy thereafter.
-initiallyThen :: Game g => Move g -> Strategy g s -> Strategy g s
+initiallyThen :: (Game g, Show (Move g)) => Move g -> Strategy g s -> Strategy g s
 initiallyThen a b = atFirst (return a) (finally b)
 
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
@@ -88,5 +88,5 @@ infinity = 1/0
 maxIndex :: (Ord a) => [a] -> Int
 maxIndex as = fromJust $ elemIndex (maximum as) as
 
-numMoves :: (Game g, GameM m g) => m Int
+numMoves :: (Game g, GameM m g, Show (Move g)) => m Int
 numMoves = liftM (length . concat) (my `each` every moves)

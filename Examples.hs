@@ -20,7 +20,7 @@ import Hagl.Game.Extensive
 import Hagl.Game.Normal
 import Hagl.GameTree
 import Hagl.Searchable
---import Hagl.Exec.Tournament
+import Hagl.Exec.Tournament
 import Hagl.Strategy
 import Hagl.Strategy.Selector
 
@@ -29,65 +29,65 @@ import Hagl.Strategy.Selector
 ------------------------
 
 -- Game definition
-data Dilemma = Cooperate | Defect deriving (Show, Eq)
+data Cooperation = C | D deriving (Show, Eq)
 
-pd = symmetric [Cooperate, Defect] [2, 0, 3, 1]
-stag = symmetric [Cooperate, Defect] [3, 0, 2, 1]
+pd = symmetric [C, D] [2, 0, 3, 1]
+stag = symmetric [C, D] [3, 0, 2, 1]
 
 -- Some simple players.
-fink = "Fink" `plays` pure Defect
-mum = "Mum" `plays` pure Cooperate
-alt = "Alternator" `plays` periodic [Cooperate, Defect]
-dc = "(DC)*" `plays` periodic [Cooperate, Defect]
-ccd = "(CCD)*" `plays` periodic [Cooperate, Cooperate, Defect]
-randy = "Randy" `plays` randomlyFrom [Cooperate, Defect]
-rr = "Russian Roulette" `plays` mixed [(5, Cooperate), (1, Defect)]
+fink = "Fink" `plays` pure D
+mum = "Mum" `plays` pure C
+alt = "Alternator" `plays` periodic [C, D]
+dc = "(DC)*" `plays` periodic [C, D]
+ccd = "(CCD)*" `plays` periodic [C, C, D]
+randy = "Randy" `plays` randomlyFrom [C, D]
+rr = "Russian Roulette" `plays` mixed [(5, C), (1, D)]
 
 -- The famous Tit-for-Tat.
-titForTat = "Tit for Tat" `plays` (Cooperate `initiallyThen` his (prev move))
+tft = "Tit for Tat" `plays` (C `initiallyThen` his (prev move))
 
-stately = Player "Stately Alternator" Cooperate $
+stately = Player "Stately Alternator" C $
   do m <- get
-     put $ if m == Cooperate then Defect else Cooperate
+     put $ if m == C then D else C
      return m
 
 mod3 = Player "Mod3 Cooperator" 0 $
   do i <- get
      put (i+1)
-     return $ if i `mod` 3 == 0 then Cooperate else Defect
+     return $ if i `mod` 3 == 0 then C else D
      
 -- Suspicious Tit-for-Tat (like Tit-for-Tat but defect on first move)
-suspicious = "Suspicious Tit-for-Tat" `plays` (Defect `initiallyThen` his (prev move))
+suspicious = "Suspicious Tit-for-Tat" `plays` (D `initiallyThen` his (prev move))
 
 -- Tit-for-Tat that only defects after two defects in a row.
 titForTwoTats = "Tit-for-Two-Tats" `plays`
     do ms <- his `each` prevn 2 move
-       return $ if ms == [Defect, Defect] then Defect else Cooperate
+       return $ if ms == [D, D] then D else C
 
--- The Grim Trigger: Cooperates until opponent defects, then defects forever.
+-- The Grim Trigger: Cs until opponent defects, then defects forever.
 grim = "Grim Trigger" `plays`
     do ms <- his `each` every move
-       return $ if Defect `elem` ms then Defect else Cooperate
+       return $ if D `elem` ms then D else C
 
 {-
 grim' = Player "Stately Grim Trigger" False
     (do m <- his (prev move)
         triggered <- get
-        put (triggered || m == Defect)
-        if triggered then play Defect else play Cooperate)
+        put (triggered || m == D)
+        if triggered then play D else play C)
 
 statelyGrim = Player "Grim Trigger" False $ get >>= trig
-  where trig True = return Defect
+  where trig True = return D
         trig False = do m <- his (prev move)
-                        if m == Cooperate then return Cooperate
-                                          else put True >> return Defect
+                        if m == C then return C
+                                          else put True >> return D
 -}
 
 grim' = Player "Stately Grim" False $ 
-  Cooperate `initiallyThen`
+  C `initiallyThen`
   do m <- his (prev move)
-     triggered <- update (|| m == Defect)
-     if triggered then play Defect else play Cooperate
+     triggered <- update (|| m == D)
+     if triggered then play D else play C
 
 {-
 -- If last move resulted in a "big" payoff, do it again, otherwise switch.
@@ -96,16 +96,16 @@ pavlov = "Pavlov" `plays`
      do p <- my (prev payoff)
         m <- my (prev move)
         return $ if p > 1 then m else
-          if m == Cooperate then Defect else Cooperate)
+          if m == C then D else C)
 -}
 
 -- Made-up strategy: Pick randomlyly until we have a lead, then
--- preserve it by repeatedly choosing Defect.
+-- preserve it by repeatedly choosing D.
 preserver = "Preserver" `plays`
     (randomly `atFirstThen`
      do me <- my score
         he <- his score
-        if me > he then return Defect else randomly)
+        if me > he then return D else randomly)
 
 a -! f = (liftM2 f) a
 (!-) = ($)
@@ -115,7 +115,9 @@ mb ? (t,f) = mb >>= \b -> if b then t else f
 
 preserver2 = "Preserver" `plays`
     (randomly `atFirstThen`
-      (my score -! (>) !- his score ? (return Defect, randomly)))
+      (my score -! (>) !- his score ? (return D, randomly)))
+
+axelrod ps = roundRobin pd ps (times 100 >> printScore)
 
 -- Running from GHCi:
 -- > runGame pd [titForTat, pavlov] (times 10 >> printTranscript >> printScores)
@@ -185,7 +187,6 @@ khrushchev = "Khrushchev" `plays`
 kennedy = "Kennedy" `plays` mixed [(2, "Blockade"), (1, "Air Strike")]
 
 {-
-{-
 nuclearWar    = Payoff [-100,-100]
 nukesInCuba   = Payoff [   1,  -1]
 nukesInTurkey = Payoff [  -1,   1]
@@ -208,6 +209,7 @@ ussrInvasionCounter = ussr ("Pull Out", nukesInTurkey <+> usaLooksGood)
 crisis = extensive start
 -}
 
+{-
 ------------------------
 -- Two Person Auction --
 ------------------------

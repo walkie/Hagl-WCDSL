@@ -65,14 +65,16 @@ summaries = do h <- history
                return (ByGame [s | (_,s) <- toList h])
 
 -- All moves made by each player in each game (including the current one).
-moves :: (Game g, GameM m g) => m (ByGame (ByPlayer [Move g]))
+-- TODO doesn't include current game--need to figure out which is correct, include current or no...
+moves :: (Game g, GameM m g, Show (Move g)) => m (ByGame (ByPlayer [Move g]))
 moves = do ss  <- summaries
-           ms' <- movesSoFar
+           --ms' <- movesSoFar
            let mss = [ms | (ms,_) <- toList ss]
-            in return (ByGame (ms':mss))
+            --in return (ByGame (ms':mss))
+            in return (ByGame mss)
 
 -- The last move by each player in each game (including the current one, if applicable).
-move :: (Game g, GameM m g) => m (ByGame (ByPlayer (Move g)))
+move :: (Game g, GameM m g, Show (Move g)) => m (ByGame (ByPlayer (Move g)))
 move = liftM (ByGame . map (ByPlayer . map head) . toList2) moves
 
 -- The payoff for each player for each game.

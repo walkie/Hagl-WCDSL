@@ -17,7 +17,6 @@ data Bid = Bid Cents | Pass deriving (Eq, Show)
 -- Dollar Auction
 
 data Auction = Auction
-type HighBid = (PlayerIx, Cents)
 
 data HighBids = HighBids {
   highBidder :: PlayerIx, highBid :: Cents,
@@ -61,6 +60,13 @@ p3 :: Player Auction
 p3 = plays "Quarter" $ do
        h <- gameState
        mixed [(1, Bid (highBid h + 25)), (3, Pass)]
+
+dim :: Player Auction
+dim = "Diminishing returns" `plays` do
+        s <- gameState
+        let high = highBid s
+         in mixed [(high, Pass), (100-high, Bid (high+1))]
+
 {-
 data Auction = Auction {
     opening :: Dollars,

@@ -75,7 +75,7 @@ data ExecM g a = ExecM { unE :: StateT (Exec g) IO a }
 data StratM g s a = StratM { unS :: StateT s (ExecM g) a }
 type Strategy g s   = StratM g s (Move g)
 
-class Monad m => GameM m g | m -> g where
+class (Monad m, MonadIO m) => GameM m g | m -> g where
   getExec :: m (Exec g)
 
 update :: MonadState s m => (s -> s) -> m s
@@ -178,3 +178,6 @@ ucross = nub . map sort . cross
 chunk :: Int -> [a] -> [[a]]
 chunk _ [] = []
 chunk n l = (take n l) : chunk n (drop n l)
+
+debug :: MonadIO m => String -> m ()
+debug = liftIO . putStrLn
