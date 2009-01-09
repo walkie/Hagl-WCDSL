@@ -1,44 +1,41 @@
 module Hagl (
-  -- Game.Definition
-  Game(..), GameTree(..), InfoGroup(..), PlayerIx,
-  normal, matrix, zerosum, extensive, stateGame, takeTurns,
-  winner, loser, tie, player, (<+>), (<|>),
-  maxPlayer, availMoves, asTree,
-  children, bfs, dfs,
-  -- Game.Execution
-  History, Transcript, Summary, Event,
-  ByGame(..), ByPlayer(..), asList, asList2,
-  Name, Player(..), plays,
-  GameExec, StratExec, Strategy, GameMonad, update,
-  -- Game.Execution.Run
-  evalGame, runGame, step, once, times,
-  -- Game.Execution.Print
+
+  -- Hagl.Core
+  Game(..), Player(..), GameM(..),
+  Name, PlayerIx, Payoff, Dist,
+  Moved, Transcript, History, Summary,
+  ExecM, StratM, Strategy,
+  plays, update, evalGame, execGame, runStrategy,
+  ByGame(..), ByPlayer(..), forGame, forPlayer, 
+  fromList, toList, toList2,
+
+  -- Hagl.Exec
+  game, players, gameState, playerIx, transcript, history,
+  myIx, numGames, numPlayers, isFirstGame,
+  transcripts, summaries, moves, move, payoff, score, movesSoFar,
+  randomlyFrom, fromDist,
+
+  -- Hagl.Exec.Run
+  once, times, conclude,
+  
+  -- Hagl.Exec.Print
   print, printLn, printStr, printStrLn,
   printTranscript, printTranscriptOfGame,
   printSummaries, printSummaryOfGame, printScore,
-  -- Game.Execution.Tournament
-  runGames, tournament, fullRoundRobin, roundRobin,
-  -- Game.Strategy
-  play, pure, randomly, randomlyFrom, mixed, periodic, minimax,
-  atFirst, next, finally, atFirstThen, initiallyThen,
-  -- Game.Strategy.Accessor
-  game, players, location, transcript, history, numGames,
-  isFirstGame, transcripts, summaries, moves, move, payoff, score,
-  -- Game.Strategy.Selector
-  each, myIx, my, his, her, our, their, playern,
-  every, first, firstn, prev, prevn, gamen,
-  -- Game.Util
-  chunk
+
+  -- Hagl.Strategy
+  
+  
+
+  -- Hagl.Game
+  winner, loser, tie, nextPlayer,
+  decide, allPlayers, takeTurns, marginal, startTurn, endTurn,
+  chanceMoved, playerMoved, genericMoved,
+  setPlayerIx, putGameState, updateGameState, getPlayer, setPlayer,
+
+
 ) where
 
-import Game.Definition
-import Game.Execution
-import Game.Execution.Run
-import Game.Execution.Print
-import Game.Execution.Tournament
-import Game.Strategy
-import Game.Strategy.Accessor
-import Game.Strategy.Selector
-import Game.Util
+import Hagl.Core
 
 import Prelude hiding (print)
