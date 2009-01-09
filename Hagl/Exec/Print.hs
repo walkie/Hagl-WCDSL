@@ -6,11 +6,6 @@ import Control.Monad.State
 import Data.List
 
 import Hagl.Core
-import Hagl.Exec
-import Hagl.Exec.Run
-
-import Hagl.Strategy.Selector
-  -- gamen and playern need to be moved so we don't have to import this
 
 ------------------------
 -- Printing Functions --
@@ -34,8 +29,8 @@ printTranscript = do n <- numGames
 
 printTranscriptOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printTranscriptOfGame n =
-  do t <- gamen n transcripts
-     p <- gamen n payoff
+  do t <- transcripts `forGameM` n
+     p <- payoff `forGameM` n
      ps <- players
      printStrLn $ "Game "++show n++":"
      let str (Just i, m) = "  " ++ show (ps !! (i-1)) ++ "'s move: " ++ show m

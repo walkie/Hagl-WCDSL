@@ -7,7 +7,6 @@ import Data.List
 
 import Hagl.Core
 import Hagl.Exec
-import Hagl.Exec.Run
 
 -- Run a game with each successive collection of players. Aggregate the scores
 -- of all Players (based on name) and print the final scores.

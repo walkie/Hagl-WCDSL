@@ -134,6 +134,12 @@ forGame (ByGame as) i = as !! (length as - i)
 forPlayer :: ByPlayer a -> Int -> a
 forPlayer (ByPlayer as) p = as !! (p-1)
 
+forGameM :: Monad m => m (ByGame a) -> Int -> m a
+forGameM l i = liftM (flip forGame i) l
+
+forPlayerM :: Monad m => m (ByPlayer a) -> Int -> m a
+forPlayerM l i = liftM (flip forPlayer i) l
+
 class DList d where
   fromList :: [a] -> d a
   toList :: d a -> [a]

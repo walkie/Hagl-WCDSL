@@ -10,7 +10,6 @@ import Data.Maybe
 import Hagl.Core
 import Hagl.GameTree
 import Hagl.Exec
-import Hagl.Exec.Util
 import Hagl.Strategy.Selector
 import Hagl.Searchable
 
