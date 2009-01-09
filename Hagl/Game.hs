@@ -5,7 +5,7 @@ module Hagl.Game where
 import Control.Monad.State hiding (State)
 
 import Hagl.Core
-import Hagl.Exec
+import Hagl.Accessor
 
 --
 -- Non-monadic functions used in defining games.

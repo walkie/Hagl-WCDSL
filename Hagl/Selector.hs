@@ -1,10 +1,10 @@
-module Hagl.Strategy.Selector where
+module Hagl.Selector where
 
 import Control.Monad
 import Data.List
 
 import Hagl.Core
-import Hagl.Exec
+import Hagl.Accessor
 import Hagl.Game
 
 --------------------

@@ -6,6 +6,7 @@ module Hagl.Core where
 import Control.Monad.State hiding (State)
 import Data.Maybe
 import Data.List
+import System.Random
 
 ---------------------
 -- Game Definition --
@@ -187,3 +188,17 @@ chunk n l = (take n l) : chunk n (drop n l)
 
 debug :: MonadIO m => String -> m ()
 debug = liftIO . putStrLn
+
+--
+-- Functions that use the IO monad.
+--
+
+randomIndex :: MonadIO m => [a] -> m Int
+randomIndex as = liftIO $ randomRIO (0, length as - 1)
+
+-- Pick a move randomly from a list.
+randomlyFrom :: MonadIO m => [a] -> m a
+randomlyFrom as = liftM (as !!) (randomIndex as)
+
+fromDist :: MonadIO m => Dist a -> m a
+fromDist d = randomlyFrom (expandDist d)

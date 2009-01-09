@@ -1,11 +1,12 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
 
-module Hagl.Exec.Print where
+module Hagl.Print where
 
 import Control.Monad.State
 import Data.List
 
 import Hagl.Core
+import Hagl.Accessor
 
 ------------------------
 -- Printing Functions --
@@ -55,3 +56,11 @@ printScore = do s  <- score
                 ps <- players
                 printStrLn "Score:"
                 printStr (scoreString ps (toList s))
+
+-----------------------
+-- Utility functions --
+-----------------------
+
+-- Generate a string showing a set of players' scores.
+scoreString :: [Player g] -> [Float] -> String 
+scoreString ps vs = unlines ["  "++show p++": "++show v | (p,v) <- zip ps vs]
