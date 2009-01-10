@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
 
-module Hagl.Game.Normal where
+module Hagl.Normal where
 
 import Data.List
 import Data.Maybe
 
 import Hagl.Core
 import Hagl.Game
-import Hagl.Exec hiding (numPlayers, moves)
+import Hagl.Accessor hiding (numPlayers, moves)
 
 type Profile mv = ByPlayer mv -- pure strategy profile
 
@@ -16,9 +16,10 @@ class Game g => Norm g where
   numPlayers :: g -> Int
   pays       :: g -> Profile (Move g) -> Payoff
   moves      :: g -> PlayerIx -> [Move g]
-  -- it would be nice if we could define initState and runGame here, but we can't :(
   
+-- 
 -- Normal form game types.
+--
 
 -- A general normal form game.
 data Normal mv = Normal Int (ByPlayer [mv]) [Payoff] deriving (Eq, Show)
@@ -83,7 +84,9 @@ saddle g = [p | p <- profiles g, v p == minimum (r p), v p == maximum (c p)]
         r (ByPlayer [m,_]) = row g (fromJust (elemIndex m (moves g 1)) + 1)
         c (ByPlayer [_,m]) = col g (fromJust (elemIndex m (moves g 2)) + 1)
 
+--
 -- Utility functions used in definitions.
+--
 
 -- Get a particular row of the payoff matrix.
 row :: Matrix mv -> Int -> [Float]
@@ -158,19 +161,3 @@ stag = symmetric [C,D] [3, 0, 2, 1]
 -}
 m1 = matrix [1..4] [1..4] [4,3,2,5,-10,2,0,-1,7,5,2,3,0,8,-4,-5]
 m2 = matrix [1..3] [1..2] [2,-3,0,2,-5,10]
-
-{-
-instance Eq mv => Game (Norm mv) where
-
-  type Move (Norm mv) = mv
-  type State (Norm mv) = ()
-
-  info = simultaneous
-  numPlayers (Norm np _ _) = np
-  
-  gameTree g = ply (numPlayers g) []
-    where ply :: Int -> [mv] -> GameTree (Norm mv) -- GHC "panics" without this type def...
-          ply 0 ms = pay (g `pays` ByPlayer ms)
-          ply p ms = decide p [(m, ply (p-1) (m:ms)) | m <- moves g p]
--}
-

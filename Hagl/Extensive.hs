@@ -1,29 +1,22 @@
 {-# OPTIONS_GHC -fglasgow-exts -XUndecidableInstances #-}
 
-module Hagl.Game.Extensive where
+module Hagl.Extensive where
 
 import Data.List
 
 import Hagl.Core
-import Hagl.Exec
 import Hagl.Game
 import Hagl.GameTree
-import Hagl.Searchable
 
 type Tree mv = GameTree (Extensive mv)
 type TreeEdge mv = Edge (Extensive mv)
 
 data Extensive mv = Extensive Int (Tree mv -> Info (Extensive mv)) (Tree mv) 
 
-instance (Eq mv, Show mv) => Game (Extensive mv) where
-  type Move (Extensive mv) = mv
-  type State (Extensive mv) = Tree mv
-  initState (Extensive _ _ t) = t
-  runGame = runTree
-
-instance (Eq mv, Show mv) => Searchable (Extensive mv) where
-  gameTree _ s = s
-  nextState _ s m = doMove m s
+-- Information Groups
+data Info g = Perfect (GameTree g)
+            | Imperfect [GameTree g]
+            | Simultaneous
 
 -- Construct a perfect information game from a finite GameTree.
 extensive :: GameTree (Extensive mv) -> Extensive mv
@@ -43,17 +36,19 @@ Payoff as <+> Payoff bs = Payoff (dzipWith (+) as bs)
 (<|>) :: Tree mv -> TreeEdge mv -> Tree mv
 Decision i ms <|> m = Decision i (m:ms)
 
-------------------------
--- Information Groups --
-------------------------
-
-data Info g = Perfect (GameTree g)
-            | Imperfect [GameTree g]
-            | Simultaneous
-
 ---------------
 -- Instances --
 ---------------
+
+instance (Eq mv, Show mv) => Game (Extensive mv) where
+  type Move (Extensive mv) = mv
+  type State (Extensive mv) = Tree mv
+  initState (Extensive _ _ t) = t
+  runGame = runTree
+
+instance (Eq mv, Show mv) => Searchable (Extensive mv) where
+  gameTree _ s = s
+  nextState _ s m = doMove m s
 
 -- Eq
 instance Eq mv => Eq (Extensive mv) where
