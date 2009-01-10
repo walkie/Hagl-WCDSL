@@ -8,10 +8,9 @@ import Data.List
 import Data.Maybe
 
 import Hagl.Core
+import Hagl.Accessor
 import Hagl.GameTree
-import Hagl.Exec
-import Hagl.Strategy.Selector
-import Hagl.Searchable
+import Hagl.Selector
 
 -----------------------
 -- Common Strategies --
