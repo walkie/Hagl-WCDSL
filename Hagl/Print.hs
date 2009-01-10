@@ -26,7 +26,11 @@ printStrLn = liftIO . putStrLn
 
 printTranscript :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printTranscript = do n <- numGames
-                     sequence_ $ map printTranscriptOfGame [1..n]
+                     printTranscriptOfGame n
+
+printTranscripts :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
+printTranscripts = do n <- numGames
+                      sequence_ $ map printTranscriptOfGame [1..n]
 
 printTranscriptOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printTranscriptOfGame n =
@@ -38,18 +42,21 @@ printTranscriptOfGame n =
          str (Nothing, m) = "  Chance: " ++ show m
       in printStr $ unlines $ map str (reverse t) ++ ["  Payoff: " ++ show (toList p)]
 
+printSummary :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
+printSummary = do n <- numGames
+                  printSummaryOfGame n
+
 printSummaries :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printSummaries = do n <- numGames
                     sequence_ $ map printSummaryOfGame [1..n]
 
 printSummaryOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printSummaryOfGame n = 
-    do ByGame ss <- summaries
+    do (ByPlayer mss, ByPlayer vs) <- summaries `forGameM` n
        ps <- players
        printStrLn $ "Summary of Game "++show n++":"
-       let (ByPlayer mss, ByPlayer vs) = ss !! (length ss - n)
-        in do printStr $ unlines ["  "++show p++" moves: "++show (reverse ms) | (p,ms) <- zip ps mss]
-              printStrLn $ "  Score: "++show vs
+       printStr $ unlines ["  "++show p++" moves: "++show (reverse ms) | (p,ms) <- zip ps mss]
+       printStrLn $ "  Score: "++show vs
 
 printScore :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printScore = do s  <- score

@@ -41,6 +41,12 @@ history = liftM _history getExec
 myIx :: (Game g, GameM m g) => m PlayerIx
 myIx = liftM (fromMaybe (error "playerIx not set")) playerIx
 
+-- The current game number.
+gameNumber :: (Game g, GameM m g) => m Int
+gameNumber = do n <- numGames
+                return (n + 1)
+
+-- The number of completed games.
 numGames :: (Game g, GameM m g) => m Int
 numGames = liftM (length . toList) history
 
@@ -49,7 +55,7 @@ numPlayers = liftM length players
 
 -- True if this is the first iteration in this execution instance.
 isFirstGame :: (Game g, GameM m g) => m Bool
-isFirstGame = liftM (null . toList) history
+isFirstGame = liftM (> 1) gameNumber
 
 -- Transcript of each game.
 transcripts :: (Game g, GameM m g) => m (ByGame (Transcript g))
@@ -63,15 +69,14 @@ summaries = do h <- history
                return (ByGame [s | (_,s) <- toList h])
 
 -- All moves made by each player in each game (including the current one).
--- TODO doesn't include current game--need to figure out which is correct, include current or no...
 moves :: (Game g, GameM m g, Show (Move g)) => m (ByGame (ByPlayer [Move g]))
 moves = do ss  <- summaries
-           --ms' <- movesSoFar
+           ms' <- movesSoFar
            let mss = [ms | (ms,_) <- toList ss]
-            --in return (ByGame (ms':mss))
-            in return (ByGame mss)
+            in return (ByGame (ms':mss))
 
 -- The last move by each player in each game (including the current one, if applicable).
+-- TODO the use of head in this function throws an empty list exception sometimes...
 move :: (Game g, GameM m g, Show (Move g)) => m (ByGame (ByPlayer (Move g)))
 move = liftM (ByGame . map (ByPlayer . map head) . toList2) moves
 

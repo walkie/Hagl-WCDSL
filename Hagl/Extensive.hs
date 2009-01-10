@@ -26,6 +26,9 @@ extensive t = Extensive (maxPlayer t) Perfect t
 player :: PlayerIx -> TreeEdge mv -> Tree mv
 player i e = Decision i [e]
 
+pays :: [Float] -> Tree mv
+pays = Payoff . ByPlayer
+
 -- Combines two game trees.
 (<+>) :: Tree mv -> Tree mv -> Tree mv
 Decision a as <+> Decision b bs | a == b = Decision a (as ++ bs)

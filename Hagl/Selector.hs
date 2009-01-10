@@ -17,9 +17,8 @@ each f xs = (sequence . map f . map return) =<< xs
 
 -- ByPlayer Selection --
 
--- TODO replace with forPlayerM
 my :: (Game g, GameM m g) => m (ByPlayer a) -> m a
-my x = liftM2 (forPlayer) x myIx
+my x = myIx >>= forPlayerM x
 
 -- Selects the next player's x.
 his :: (Game g, GameM m g) => m (ByPlayer a) -> m a
@@ -45,13 +44,19 @@ every :: (Game g, GameM m g) => m (ByGame a) -> m [a]
 every = liftM toList
 
 first :: (Game g, GameM m g) => m (ByGame a) -> m a
-first = liftM (last . toList)
+first x = x `forGameM` 1
 
 firstn :: (Game g, GameM m g) => Int -> m (ByGame a) -> m [a]
-firstn n = liftM (reverse . take n . reverse . toList)
+firstn n x = sequence (map (forGameM x) [n, n-1 .. 1])
 
 prev :: (Game g, GameM m g) => m (ByGame a) -> m a
-prev = liftM (head . toList)
+prev x = do n <- numGames
+            x `forGameM` n
+
+this :: (Game g, GameM m g) => m (ByGame a) -> m a
+this x = do n <- gameNumber
+            x `forGameM` n
 
 prevn :: (Game g, GameM m g) => Int -> m (ByGame a) -> m [a]
-prevn n = liftM (take n . toList)
+prevn i x = do n <- numGames
+               sequence (map (forGameM x) [n, n-1 .. i])

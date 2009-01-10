@@ -118,6 +118,12 @@ lookupPay mss ps ms = fromJust (lookup ms (zip (dcross mss) ps))
 zerosum :: [Float] -> [Payoff]
 zerosum vs = [fromList [v, -v] | v <- vs]
 
+-- Select a move randomly, for use in strategies.
+randomly :: Norm g => Strategy g ()
+randomly = do g <- game
+              Just i <- playerIx
+              randomlyFrom (moves g i)
+
 ---------------------------
 -- Instance Declarations --
 ---------------------------

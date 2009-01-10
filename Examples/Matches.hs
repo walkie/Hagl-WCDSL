@@ -1,22 +1,21 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
 
-module Hagl.Game.Matches where
+{-
 
-import Control.Monad
+An implementation of the Match Game, described in the paper.
+
+Example experiments from GHCi:
+> execGame matchGame [matchy, randy] (once >> printTranscript)
+> execGame matchGame [matchy, randy] (times 1000 >> printScore)
+> execGame matchGame [randy, matchy] (times 1000 >> printScore)
+
+-}
+module Examples.Matches where
+
 import Data.Maybe
-import Data.List hiding (take)
-import Prelude hiding (take)
+import Data.List
 
-import Hagl.Core
-import Hagl.Game hiding (winner)
-import Hagl.Exec hiding (moves, payoff)
-import Hagl.Exec.Run
-import Hagl.Exec.Print
-import Hagl.Strategy hiding (randomly)
-
-----------------
--- Match Game --
-----------------
+import Hagl hiding (moves, payoff, randomly)
 
 data Matches = Matches Int [Int]
 
@@ -29,9 +28,9 @@ instance Game Matches where
 matches :: GameM m Matches => m Int
 matches = gameState
 
-take n = updateGameState (subtract n)
+draw n = updateGameState (subtract n)
 
-turn p = decide p >>= take >> return p
+turn p = decide p >>= draw >> return p
           
 end = do n <- matches
          return (n <= 0)
@@ -45,6 +44,10 @@ moves = do n <- matches
 
 randomly = do ms <- moves
               randomlyFrom ms
+
+matchGame = Matches 15 [1,2,3] -- an example match game
+
+-- Players
 
 randy = "Randy" `plays` randomly
 

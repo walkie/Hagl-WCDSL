@@ -1,20 +1,25 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
 
-module Hagl.Game.Auction where
+{-
 
-import Hagl.Core
-import Hagl.Exec
-import Hagl.Game
+An implementation of the Dollar Auction:
+  http://en.wikipedia.org/wiki/Dollar_auction
 
-import Hagl.Exec.Run
-import Hagl.Exec.Print
-import Hagl.Strategy
+Example experiments from GHCi:
+> execGame Auction [p1, p2, p3, dim] (once >> printTranscript)
+> execGame Auction [p1, p2, p3, dim] (times 100 >> printScore)
+
+(The included strategies are not necessarily good ones and are
+merely included as examples...)
+
+-}
+module Examples.Auction where
+
+import Hagl
 
 type Cents = Int
 
 data Bid = Bid Cents | Pass deriving (Eq, Show)
-
--- Dollar Auction
 
 data Auction = Auction
 
@@ -46,6 +51,8 @@ pay n h = ByPlayer [fromIntegral (val p) | p <- [1..n]]
               | p == nextBidder h =   0 - nextBid h
               | otherwise         =   0
 
+-- Players
+
 p1 :: Player Auction
 p1 = plays "Penny" $ do 
        h <- gameState
@@ -66,10 +73,3 @@ dim = "Diminishing returns" `plays` do
         s <- gameState
         let high = highBid s
          in mixed [(high, Pass), (100-high, Bid (high+1))]
-
-{-
-data Auction = Auction {
-    opening :: Dollars,
-    prize   :: Dollars
-}
--}
