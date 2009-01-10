@@ -156,14 +156,3 @@ instance Eq mv => Norm (Matrix mv) where
 ---------------------
 
 -- TODO
-
--- Examples
-
-{-
-data CD = C | D deriving (Eq, Show)
-
-pd   = symmetric [C,D] [2, 0, 3, 1]
-stag = symmetric [C,D] [3, 0, 2, 1]
--}
-m1 = matrix [1..4] [1..4] [4,3,2,5,-10,2,0,-1,7,5,2,3,0,8,-4,-5]
-m2 = matrix [1..3] [1..2] [2,-3,0,2,-5,10]

@@ -41,7 +41,7 @@ their x = do ByPlayer as <- x
 -- ByGame Selection --
 
 every :: (Game g, GameM m g) => m (ByGame a) -> m [a]
-every = liftM toList
+every = liftM (tail . toList) -- TODO use of tail here is a gross hack to avoid a bug in "move"
 
 first :: (Game g, GameM m g) => m (ByGame a) -> m a
 first x = x `forGameM` 1

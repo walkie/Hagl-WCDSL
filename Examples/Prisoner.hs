@@ -2,27 +2,26 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
 {-
-import Data.List
-import Hagl
 
-import Control.Monad.State
-import Prelude hiding (print)
+Defines the prisoner's dilemma, stag hunt, and a suite of strategies.
+
+From GHCi, try some of the following.
+
+> nash pd
+> pareto pd
+> paretoNash pd
+> paretoNash stag
+> execGame pd [tft, pavlov] (times 10 >> printTranscripts >> printScore)
+> axelrod [fink, tft, grim, pavlov, preserver]
+
 -}
-import Control.Monad.State
-import Data.List
 
-import Hagl.Core
-import Hagl.Exec
-import Hagl.Exec.Run
-import Hagl.Exec.Print
-import Hagl.Game
-import Hagl.Game.Extensive
-import Hagl.Game.Normal
-import Hagl.GameTree
-import Hagl.Searchable
-import Hagl.Exec.Tournament
-import Hagl.Strategy
-import Hagl.Strategy.Selector
+module Examples.Prisoner where
+
+import Control.Monad.State
+
+import Hagl hiding (randomly)
+import Hagl.Normal
 
 ------------------------
 -- Prisoner's Dilemma --
@@ -46,6 +45,7 @@ rr = "Russian Roulette" `plays` mixed [(5, C), (1, D)]
 -- The famous Tit-for-Tat.
 tft = "Tit for Tat" `plays` (C `initiallyThen` his (prev move))
 
+-- An example of using state to define a strategy; alternates moves.
 stately = Player "Stately Alternator" C $
   do m <- get
      put $ if m == C then D else C
@@ -91,6 +91,10 @@ preserver = "Preserver" `plays`
         he <- his score
         if me > he then return D else randomly)
 
+axelrod ps = roundRobin pd ps (times 100 >> printScore)
+
+{- Playing around with syntax...
+
 a -! f = (liftM2 f) a
 (!-) = ($)
 
@@ -100,9 +104,4 @@ mb ? (t,f) = mb >>= \b -> if b then t else f
 preserver2 = "Preserver" `plays`
     (randomly `atFirstThen`
       (my score -! (>) !- his score ? (return D, randomly)))
-
-axelrod ps = roundRobin pd ps (times 100 >> printScore)
-
--- Running from GHCi:
--- > runGame pd [titForTat, pavlov] (times 10 >> printTranscript >> printScores)
--- > roundRobin pd [titForTat, titForTwoTats, grim, suspicious, pavlov] (times 100 >> printScore)
+-}
