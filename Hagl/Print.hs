@@ -25,12 +25,11 @@ printStrLn :: MonadIO m => String -> m ()
 printStrLn = liftIO . putStrLn
 
 printTranscript :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
-printTranscript = do n <- numGames
-                     printTranscriptOfGame n
+printTranscript = numGames >>= printTranscriptOfGame
 
 printTranscripts :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printTranscripts = do n <- numGames
-                      sequence_ $ map printTranscriptOfGame [1..n]
+                      mapM_ printTranscriptOfGame [1..n]
 
 printTranscriptOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printTranscriptOfGame n =
@@ -43,12 +42,11 @@ printTranscriptOfGame n =
       in printStr $ unlines $ map str (reverse t) ++ ["  Payoff: " ++ show (toList p)]
 
 printSummary :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
-printSummary = do n <- numGames
-                  printSummaryOfGame n
+printSummary = numGames >>= printSummaryOfGame
 
 printSummaries :: (Game g, GameM m g, MonadIO m, Show (Move g)) => m ()
 printSummaries = do n <- numGames
-                    sequence_ $ map printSummaryOfGame [1..n]
+                    mapM_ printSummaryOfGame [1..n]
 
 printSummaryOfGame :: (Game g, GameM m g, MonadIO m, Show (Move g)) => Int -> m ()
 printSummaryOfGame n = 

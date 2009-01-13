@@ -116,5 +116,5 @@ instance Show (Move g) => Show (GameTree g) where
           sub (Chance d) = [tree (show i ++ " * " ++ show m ++ " -> ") t | (i,(m,t)) <- d]
           sub (Payoff _) = []
           tree pre t = Tree.Node (pre ++ str t) (sub t)
-          condense s = let empty = not . and . map (\c -> c == ' ' || c == '|')
+          condense s = let empty = not . all (\c -> c == ' ' || c == '|')
                        in unlines $ filter empty $ lines s

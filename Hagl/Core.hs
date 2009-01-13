@@ -4,6 +4,7 @@
 module Hagl.Core where
 
 import Control.Monad.State hiding (State)
+import Data.Function
 import Data.Maybe
 import Data.List
 import System.Random
@@ -59,14 +60,14 @@ data Player g = forall s.
   }
 
 plays :: Name -> Strategy g () -> Player g
-plays n s = Player n () s
+plays n = Player n ()
 
 instance Show (Player g) where
   show = name
 instance Eq (Player g) where
-  a == b = name a == name b
+  (==) = (==) `on` name
 instance Ord (Player g) where
-  compare a b = compare (name a) (name b)
+  compare = compare `on` name
 
 -----------------------------------
 -- Execution and Strategy Monads --
@@ -133,7 +134,7 @@ forGame :: ByGame a -> Int -> a
 forGame (ByGame as) i = as !! (length as - i)
 
 forPlayer :: ByPlayer a -> Int -> a
-forPlayer (ByPlayer as) p = as !! (p-1)
+forPlayer (ByPlayer as) i = as !! (i-1)
 
 forGameM :: Monad m => m (ByGame a) -> Int -> m a
 forGameM l i = liftM (flip forGame i) l
@@ -152,7 +153,7 @@ instance DList ByPlayer where
   toList (ByPlayer as) = as
 
 dcross :: DList d => d [a] -> [d a]
-dcross xss = map fromList (cross (toList xss))
+dcross = map fromList . cross . toList
 
 toList2 :: (DList f, DList g) => f (g a) -> [[a]]
 toList2 = map toList . toList
@@ -184,7 +185,7 @@ ucross = nub . map sort . cross
 -- Break a list into n equal-sized chunks.
 chunk :: Int -> [a] -> [[a]]
 chunk _ [] = []
-chunk n l = (take n l) : chunk n (drop n l)
+chunk n l = take n l : chunk n (drop n l)
 
 debug :: MonadIO m => String -> m ()
 debug = liftIO . putStrLn
@@ -201,4 +202,4 @@ randomlyFrom :: MonadIO m => [a] -> m a
 randomlyFrom as = liftM (as !!) (randomIndex as)
 
 fromDist :: MonadIO m => Dist a -> m a
-fromDist d = randomlyFrom (expandDist d)
+fromDist = randomlyFrom . expandDist

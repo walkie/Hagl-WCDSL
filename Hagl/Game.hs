@@ -63,7 +63,7 @@ marginal f = liftM f score
 -- Player turns
 
 startTurn :: Game g => PlayerIx -> ExecM g ()
-startTurn i = setPlayerIx (Just i)
+startTurn = setPlayerIx . Just
 
 endTurn :: Game g => ExecM g ()
 endTurn = setPlayerIx Nothing

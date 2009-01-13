@@ -13,7 +13,7 @@ import Hagl.Game
 
 -- Apply selection to each element of a list.
 each :: Monad m => (m a -> m b) -> m [a] -> m [b]
-each f xs = (sequence . map f . map return) =<< xs
+each f xs = mapM (f . return) =<< xs
 
 -- ByPlayer Selection --
 
@@ -36,7 +36,7 @@ our = liftM toList
 their :: (Game g, GameM m g) => m (ByPlayer a) -> m [a]
 their x = do ByPlayer as <- x
              i <- myIx
-             return $ (take i as) ++ (drop (i+1) as)
+             return $ take i as ++ drop (i+1) as
 
 -- ByGame Selection --
 
@@ -47,16 +47,14 @@ first :: (Game g, GameM m g) => m (ByGame a) -> m a
 first x = x `forGameM` 1
 
 firstn :: (Game g, GameM m g) => Int -> m (ByGame a) -> m [a]
-firstn n x = sequence (map (forGameM x) [n, n-1 .. 1])
+firstn n x = mapM (forGameM x) [n, n-1 .. 1]
 
 prev :: (Game g, GameM m g) => m (ByGame a) -> m a
-prev x = do n <- numGames
-            x `forGameM` n
+prev x = numGames >>= forGameM x
 
 this :: (Game g, GameM m g) => m (ByGame a) -> m a
-this x = do n <- gameNumber
-            x `forGameM` n
+this x = gameNumber >>= forGameM x
 
 prevn :: (Game g, GameM m g) => Int -> m (ByGame a) -> m [a]
 prevn i x = do n <- numGames
-               sequence (map (forGameM x) [n, n-1 .. i])
+               mapM (forGameM x) [n, n-1 .. i]

@@ -104,7 +104,7 @@ dimensions g = let np = numPlayers g
 -- A list of all pure strategy profiles.
 profiles :: Norm g => g -> [Profile (Move g)]
 profiles g = let np = numPlayers g
-             in dcross (fromList [(moves g i) | i <- [1..np]])
+             in dcross (fromList [moves g i | i <- [1..np]])
 
 runNormal :: Norm g => ExecM g Payoff
 runNormal = do g <- game

@@ -14,8 +14,7 @@ import Hagl.Print
 --------------------
 
 once :: (Game g) => ExecM g ()
-once = do p <- runGame
-          conclude p
+once = runGame >>= conclude
 
 times :: (Game g) => Int -> ExecM g ()
 times 0 = return ()
@@ -40,7 +39,7 @@ runGames :: (Game g, Show (Move g)) => g -> [[Player g]] -> ExecM g a -> IO ()
 runGames g pss f = 
     let unique = nub $ concat pss
         run ps = evalGame g ps (f >> liftM toList score)
-    in sequence (map run pss) >>= \vss ->
+    in mapM run pss >>= \vss ->
          let pis = map (flip elemIndices (concat pss)) unique
              vs =  map (sum . map ((concat vss) !!)) pis
              (vs', ps') = unzip $ reverse $ sortTogether vs unique

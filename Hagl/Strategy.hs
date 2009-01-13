@@ -53,11 +53,11 @@ finally = (:[])
 
 -- Play a strategy for the first move, then another strategy thereafter.
 atFirstThen :: (Game g, Show (Move g)) => Strategy g s -> Strategy g s -> Strategy g s
-atFirstThen a b = atFirst a (finally b)
+atFirstThen a = atFirst a . finally
 
 -- Play an initial move, then another strategy thereafter.
 initiallyThen :: (Game g, Show (Move g)) => Move g -> Strategy g s -> Strategy g s
-initiallyThen a b = atFirst (return a) (finally b)
+initiallyThen a = atFirst (return a) . finally
 
 -- Minimax algorithm with alpha-beta pruning. Only defined for games with
 -- perfect information and no Chance nodes.
