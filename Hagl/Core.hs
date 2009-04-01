@@ -182,13 +182,10 @@ cross [] = [[]]
 ucross :: (Ord a) => [[a]] -> [[a]]
 ucross = nub . map sort . cross
 
--- Break a list into n equal-sized chunks.
+-- Break a list into n-sized chunks.
 chunk :: Int -> [a] -> [[a]]
 chunk _ [] = []
 chunk n l = take n l : chunk n (drop n l)
-
-debug :: MonadIO m => String -> m ()
-debug = liftIO . putStrLn
 
 --
 -- Functions that use the IO monad.
@@ -203,3 +200,7 @@ randomlyFrom as = liftM (as !!) (randomIndex as)
 
 fromDist :: MonadIO m => Dist a -> m a
 fromDist = randomlyFrom . expandDist
+
+debug :: MonadIO m => String -> m ()
+debug = liftIO . putStrLn
+
