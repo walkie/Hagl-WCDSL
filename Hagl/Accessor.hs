@@ -38,13 +38,13 @@ history = liftM _history getExec
 -- Accessors that do some processing
 --
 
+-- The index of the currently active player.
 myIx :: (Game g, GameM m g) => m PlayerIx
 myIx = liftM (fromMaybe (error "playerIx not set")) playerIx
 
 -- The current game number.
 gameNumber :: (Game g, GameM m g) => m Int
-gameNumber = do n <- numGames
-                return (n + 1)
+gameNumber = liftM (+1) numGames
 
 -- The number of completed games.
 numGames :: (Game g, GameM m g) => m Int

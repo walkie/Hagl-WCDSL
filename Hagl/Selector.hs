@@ -25,7 +25,8 @@ his :: (Game g, GameM m g) => m (ByPlayer a) -> m a
 his x = do as <- x
            i <- myIx
            np <- numPlayers
-           return $ as `forPlayer` nextPlayer np i
+           if np /= 2 then error "his/her can only be used in two player games"
+                      else return $ as `forPlayer` nextPlayer np i
 
 her :: (Game g, GameM m g) => m (ByPlayer a) -> m a
 her = his
